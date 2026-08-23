@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/qr_service.dart';
 import '../../services/sheets_services.dart';
 import 'onboarding_screen.dart';
+import 'review_absensi_screen.dart';
 import 'riwayat_screen.dart';
 
 class GuruDashboard extends StatefulWidget {
@@ -22,7 +23,18 @@ class _GuruDashboardState extends State<GuruDashboard> {
   int _currentIndex = 0;
   final SheetsService _sheetsService = SheetsService();
 
+  // Hasil scan sesi ini yang BELUM disimpan ke backend: siswaId -> status.
+  // Diisi tiap kali scan sukses, dikosongkan lagi setelah berhasil disimpan
+  // lewat layar "Tinjau Absensi".
+  final Map<String, String> _scanResults = {};
+  List<Map<String, dynamic>> _studentsCache = [];
+
   void _openCameraScanner() {
+    // Cegah 1 kode QR yang sama terdeteksi berkali-kali dalam waktu singkat
+    // (kamera bisa fire onDetect beberapa kali per detik untuk kode yang sama).
+    DateTime? lastDetectAt;
+    String? lastCode;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -34,21 +46,38 @@ class _GuruDashboardState extends State<GuruDashboard> {
               title: const Text('Pindai QR Siswa'),
               automaticallyImplyLeading: false,
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.close),
+                TextButton(
                   onPressed: () => Navigator.pop(context),
+                  child: const Text('Selesai', style: TextStyle(color: Colors.white)),
                 ),
               ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'Arahkan kamera ke kartu QR tiap siswa satu per satu. '
+                'Scanner tetap terbuka sampai kamu tekan "Selesai".',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
             ),
             Expanded(
               child: MobileScanner(
                 onDetect: (capture) {
                   final List<Barcode> barcodes = capture.barcodes;
-                  if (barcodes.isNotEmpty) {
-                    final String rawCode = barcodes.first.rawValue ?? '';
-                    Navigator.pop(context); // Tutup scanner
-                    _processAttendance(rawCode);
+                  if (barcodes.isEmpty) return;
+                  final String rawCode = barcodes.first.rawValue ?? '';
+                  if (rawCode.isEmpty) return;
+
+                  final now = DateTime.now();
+                  if (rawCode == lastCode &&
+                      lastDetectAt != null &&
+                      now.difference(lastDetectAt!) < const Duration(seconds: 2)) {
+                    return; // masih kode yang sama, abaikan supaya tidak dobel
                   }
+                  lastCode = rawCode;
+                  lastDetectAt = now;
+
+                  _processAttendance(rawCode);
                 },
               ),
             ),
@@ -58,10 +87,14 @@ class _GuruDashboardState extends State<GuruDashboard> {
     );
   }
 
+  /// Scan QR TIDAK langsung menulis ke backend lagi. Hasil scan cuma
+  /// disimpan ke state lokal (_scanResults) dulu; guru mengoreksi &
+  /// mengirim semuanya sekaligus lewat layar "Tinjau Absensi".
   Future<void> _processAttendance(String qrData) async {
-    final email = context.read<AuthService>().currentUser?.email;
-    final students = await _sheetsService.getStudents(kelas: widget.kelas);
-    final studentId = QRService.validateQR(qrData, students);
+    if (_studentsCache.isEmpty) {
+      _studentsCache = await _sheetsService.getStudents(kelas: widget.kelas);
+    }
+    final studentId = QRService.validateQR(qrData, _studentsCache);
     if (studentId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,25 +105,47 @@ class _GuruDashboardState extends State<GuruDashboard> {
       }
       return;
     }
-    if (email == null) return;
-    final saved = await _sheetsService.writeAttendance(
-      guruEmail: email,
-      kelas: widget.kelas,
-      mapel: widget.mapel,
-      siswaId: studentId,
-      status: 'Hadir',
-    );
+
+    final nama = _studentsCache.firstWhere(
+      (s) => (s['ID'] ?? '').toString() == studentId,
+      orElse: () => const {},
+    )['Nama']?.toString();
+
+    setState(() => _scanResults[studentId] = 'Hadir');
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            saved ? 'Absensi berhasil dicatat' : 'Absensi gagal disimpan',
-          ),
+          content: Text('Ditandai Hadir: ${nama?.isNotEmpty == true ? nama : studentId}'),
+          duration: const Duration(seconds: 1),
         ),
       );
-      if (saved) {
-        setState(() {}); // memicu BerandaTab reload lewat rebuild key
-      }
+    }
+  }
+
+  Future<void> _bukaTinjauAbsensi() async {
+    final email = context.read<AuthService>().currentUser?.email;
+    if (email == null) return;
+
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReviewAbsensiScreen(
+          kelas: widget.kelas,
+          mapel: widget.mapel,
+          guruEmail: email,
+          scanResults: Map<String, String>.from(_scanResults),
+        ),
+      ),
+    );
+
+    if (saved == true && mounted) {
+      setState(() {
+        _scanResults.clear(); // sesi absen selesai, mulai bersih lagi
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Absensi berhasil disimpan')),
+      );
     }
   }
 
@@ -111,6 +166,13 @@ class _GuruDashboardState extends State<GuruDashboard> {
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(title: Text('${widget.kelas} - ${widget.mapel}')),
       body: pages[_currentIndex],
+      floatingActionButton: _scanResults.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _bukaTinjauAbsensi,
+              icon: const Icon(Icons.fact_check_rounded),
+              label: Text('Tinjau (${_scanResults.length})'),
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {

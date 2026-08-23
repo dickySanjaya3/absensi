@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/sheets_services.dart';
 import 'crud_assignment_screen.dart';
 import 'crud_guru_screen.dart';
+import 'crud_kelas_screen.dart';
 import 'crud_siswa_screen.dart';
 
 class AdminDashboard extends StatelessWidget {
@@ -31,6 +32,17 @@ class AdminDashboard extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const CrudGuruScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.class_),
+              title: const Text('Kelola Kelas'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CrudKelasScreen()),
                 );
               },
             ),

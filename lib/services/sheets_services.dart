@@ -92,6 +92,7 @@ class SheetsService {
     required String id,
     required String nama,
     required String kelas,
+    required String nis,
     required String jenisKelamin,
     required String barcode,
   }) async {
@@ -99,6 +100,7 @@ class SheetsService {
       'id': id,
       'nama': nama,
       'kelas': kelas,
+      'nis': nis,
       'jenisKelamin': jenisKelamin,
       'barcode': barcode,
     });
@@ -110,6 +112,7 @@ class SheetsService {
     required String kelas,
     required String id,
     required String nama,
+    required String nis,
     required String jenisKelamin,
     required String barcode,
   }) async {
@@ -118,6 +121,7 @@ class SheetsService {
       'kelas': kelas,
       'id': id,
       'nama': nama,
+      'nis': nis,
       'jenisKelamin': jenisKelamin,
       'barcode': barcode,
     });
@@ -139,6 +143,21 @@ class SheetsService {
     final res = await _call('getClasses', {});
     if (res['ok'] != true) return [];
     return (res['data'] as List).map((e) => e.toString()).toList();
+  }
+
+  /// Tambah kelas baru. Backend otomatis menyiapkan tab siswa kosong
+  /// untuk kelas ini. Return pesan error kalau gagal (mis. nama dobel),
+  /// atau null kalau sukses.
+  Future<String?> addClass(String namaKelas) async {
+    final res = await _call('addClass', {'namaKelas': namaKelas});
+    if (res['ok'] == true) return null;
+    return res['error']?.toString() ?? 'Gagal menambah kelas';
+  }
+
+  /// Hapus kelas dari daftar (tab data siswanya TIDAK ikut terhapus).
+  Future<bool> deleteClass(String namaKelas) async {
+    final res = await _call('deleteClass', {'namaKelas': namaKelas});
+    return res['ok'] == true;
   }
 
   Future<List<Map<String, dynamic>>> getAssignments(String emailGuru) async {
@@ -207,6 +226,24 @@ class SheetsService {
       'mapel': mapel,
       'siswaId': siswaId,
       'status': status,
+    });
+    return res['ok'] == true;
+  }
+
+  /// Simpan absensi 1 kelas sekaligus (dipakai layar Tinjau Absensi).
+  /// [items] = daftar {siswaId, status} untuk SEMUA siswa di kelas itu,
+  /// baik yang sudah discan maupun yang diisi manual oleh guru.
+  Future<bool> writeAttendanceBatch({
+    required String guruEmail,
+    required String kelas,
+    required String mapel,
+    required List<Map<String, String>> items,
+  }) async {
+    final res = await _call('writeAttendanceBatch', {
+      'guruEmail': guruEmail,
+      'kelas': kelas,
+      'mapel': mapel,
+      'items': items,
     });
     return res['ok'] == true;
   }

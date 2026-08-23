@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import '../../services/sheets_services.dart';
 
 class CrudSiswaScreen extends StatefulWidget {
-  const CrudSiswaScreen({super.key});
+  /// Kalau diisi, layar ini dibuka langsung untuk kelas tsb (dari layar
+  /// Kelola Kelas) dan dropdown kelas dikunci ke nilai ini. Kalau null,
+  /// admin bisa bebas pilih/pindah kelas seperti biasa.
+  final String? initialKelas;
+
+  const CrudSiswaScreen({super.key, this.initialKelas});
 
   @override
   State<CrudSiswaScreen> createState() => _CrudSiswaScreenState();
@@ -27,7 +32,12 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     if (!mounted) return;
     setState(() {
       _classes = classes;
-      _selectedKelas = classes.isNotEmpty ? classes.first : null;
+      // Kalau dibuka dari layar Kelola Kelas untuk kelas tertentu, pakai itu
+      // (asal kelasnya memang masih ada); kalau tidak, kelas pertama seperti biasa.
+      _selectedKelas = widget.initialKelas != null &&
+              classes.contains(widget.initialKelas)
+          ? widget.initialKelas
+          : (classes.isNotEmpty ? classes.first : null);
       _isLoading = false;
     });
     if (_selectedKelas != null) await _loadStudents();
@@ -53,6 +63,9 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     );
     final namaCtrl = TextEditingController(
       text: student?['Nama']?.toString() ?? '',
+    );
+    final nisCtrl = TextEditingController(
+      text: student?['NIS']?.toString() ?? '',
     );
     final jenisKelamin = student?['Jenis Kelamin']?.toString() ?? '';
     final jenisKelaminCtrl = TextEditingController(text: jenisKelamin);
@@ -89,6 +102,12 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                     enabled: !isSaving,
                     decoration: const InputDecoration(labelText: 'Nama Siswa'),
                     validator: _required,
+                  ),
+                  TextFormField(
+                    controller: nisCtrl,
+                    enabled: !isSaving,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'NIS'),
                   ),
                   DropdownButtonFormField<String>(
                     initialValue: jenisKelaminCtrl.text.isEmpty
@@ -130,6 +149,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                               id: idCtrl.text.trim(),
                               nama: namaCtrl.text.trim(),
                               kelas: kelas,
+                              nis: nisCtrl.text.trim(),
                               jenisKelamin: jenisKelaminCtrl.text,
                               barcode: barcodeCtrl.text.trim(),
                             )
@@ -139,6 +159,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                                   .toInt(),
                               id: idCtrl.text.trim(),
                               nama: namaCtrl.text.trim(),
+                              nis: nisCtrl.text.trim(),
                               jenisKelamin: jenisKelaminCtrl.text,
                               barcode: barcodeCtrl.text.trim(),
                             );
@@ -158,6 +179,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     );
     idCtrl.dispose();
     namaCtrl.dispose();
+    nisCtrl.dispose();
     jenisKelaminCtrl.dispose();
     barcodeCtrl.dispose();
     if (saved == true) {
@@ -211,7 +233,13 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('CRUD Data Siswa')),
+      appBar: AppBar(
+        title: Text(
+          widget.initialKelas != null
+              ? 'Siswa Kelas ${widget.initialKelas}'
+              : 'CRUD Data Siswa',
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showFormDialog(),
         child: const Icon(Icons.add),
@@ -269,7 +297,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                               return ListTile(
                                 title: Text(student['Nama'].toString()),
                                 subtitle: Text(
-                                  'ID: ${student['ID']} | Jenis Kelamin: ${student['Jenis Kelamin']}',
+                                  'ID: ${student['ID']} | NIS: ${student['NIS'] ?? '-'} | JK: ${student['Jenis Kelamin']}',
                                 ),
                                 isThreeLine: true,
                                 trailing: Wrap(
