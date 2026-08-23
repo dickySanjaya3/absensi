@@ -244,9 +244,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     itemCount: _attendance.length,
                     itemBuilder: (context, index) {
                       final item = _attendance[index];
+                      final nama =
+                          (item['nama'] ?? item['siswaId'] ?? '-').toString();
+                      final nis = item['nis']?.toString();
+                      final subtitle = [
+                        if (nis != null && nis.isNotEmpty) 'NIS: $nis',
+                        (item['timestamp'] ?? '').toString(),
+                      ].where((s) => s.isNotEmpty).join(' • ');
                       return ListTile(
-                        title: Text('Siswa: ${item['siswaId']}'),
-                        subtitle: Text(item['timestamp'] ?? ''),
+                        title: Text(nama),
+                        subtitle: Text(subtitle),
                         trailing: DropdownButton<String>(
                           value: item['status'],
                           items: ['Hadir', 'Izin', 'Sakit', 'Alpa', 'Belum']
