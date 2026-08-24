@@ -136,7 +136,17 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx, false),
+              onPressed: isSaving
+                  ? null
+                  : () {
+                      // Tutup dulu keyboard/overlay dropdown yang mungkin masih
+                      // aktif sebelum dialog di-pop, supaya tidak crash
+                      // "_dependents.isEmpty is not true" (race condition
+                      // Flutter kalau ada Focus/overlay yang belum selesai
+                      // dibersihkan saat dialog ditutup).
+                      FocusScope.of(ctx).unfocus();
+                      Navigator.pop(ctx, null);
+                    },
               child: const Text('Batal'),
             ),
             ElevatedButton(
@@ -144,6 +154,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                   ? null
                   : () async {
                       if (!formKey.currentState!.validate()) return;
+                      FocusScope.of(ctx).unfocus();
                       setDialogState(() => isSaving = true);
                       final result = index == null
                           ? await _sheetsService.addStudent(
@@ -187,6 +198,9 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
       await _loadStudents();
       if (mounted) _message('Data siswa tersimpan');
     } else if (saved == false && mounted) {
+      // saved == false artinya proses simpan memang dijalankan tapi gagal.
+      // saved == null artinya dialog ditutup lewat tombol Batal, jadi tidak
+      // perlu tampilkan pesan error apa pun.
       _message('Gagal menyimpan. ID atau NIS mungkin sudah digunakan.');
     }
   }

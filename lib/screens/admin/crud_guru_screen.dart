@@ -90,7 +90,12 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx, false),
+              onPressed: isSaving
+                  ? null
+                  : () {
+                      FocusScope.of(ctx).unfocus();
+                      Navigator.pop(ctx, null);
+                    },
               child: const Text('Batal'),
             ),
             ElevatedButton(
@@ -98,6 +103,7 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
                   ? null
                   : () async {
                       if (!formKey.currentState!.validate()) return;
+                      FocusScope.of(ctx).unfocus();
                       setDialogState(() => isSaving = true);
                       final saved = index == null
                           ? await _sheetsService.addGuru(
@@ -136,6 +142,7 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
       await _loadGurus();
       if (mounted) _message('Data guru tersimpan');
     } else if (result == false && mounted) {
+      // false = proses simpan gagal; null (Batal) tidak masuk sini.
       _message('Data tidak tersimpan. Email mungkin sudah digunakan.');
     }
   }

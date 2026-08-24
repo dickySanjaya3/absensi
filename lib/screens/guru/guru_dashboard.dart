@@ -30,6 +30,29 @@ class _GuruDashboardState extends State<GuruDashboard> {
   final Map<String, String> _scanResults = {};
   List<Map<String, dynamic>> _studentsCache = [];
 
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Kamu perlu login lagi untuk masuk ke aplikasi.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<AuthService>().signOut();
+    }
+  }
+
   void _openCameraScanner() {
     // Cegah 1 kode QR yang sama terdeteksi berkali-kali dalam waktu singkat
     // (kamera bisa fire onDetect beberapa kali per detik untuk kode yang sama).
@@ -242,6 +265,13 @@ class _GuruDashboardState extends State<GuruDashboard> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Keluar',
+            onPressed: () => _confirmLogout(context),
+          ),
+        ],
       ),
       body: pages[_currentIndex],
       floatingActionButton: _scanResults.isEmpty

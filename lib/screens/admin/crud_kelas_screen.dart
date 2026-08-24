@@ -84,7 +84,12 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              onPressed: isSaving
+                  ? null
+                  : () {
+                      FocusScope.of(ctx).unfocus();
+                      Navigator.pop(ctx);
+                    },
               child: const Text('Batal'),
             ),
             ElevatedButton(
@@ -92,6 +97,7 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
                   ? null
                   : () async {
                       if (!formKey.currentState!.validate()) return;
+                      FocusScope.of(ctx).unfocus();
                       setDialogState(() => isSaving = true);
                       final error = await _sheetsService.addClass(
                         ctrl.text.trim(),

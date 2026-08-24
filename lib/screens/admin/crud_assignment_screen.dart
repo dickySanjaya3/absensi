@@ -79,7 +79,12 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx, false),
+              onPressed: isSaving
+                  ? null
+                  : () {
+                      FocusScope.of(ctx).unfocus();
+                      Navigator.pop(ctx, null);
+                    },
               child: const Text('Batal'),
             ),
             ElevatedButton(
@@ -87,6 +92,7 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
                   ? null
                   : () async {
                       if (!key.currentState!.validate()) return;
+                      FocusScope.of(ctx).unfocus();
                       setDialogState(() => isSaving = true);
                       final result = index == null
                           ? await _service.addAssignment(
@@ -122,6 +128,7 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
       await _load();
       if (mounted) _message('Assignment tersimpan');
     } else if (saved == false && mounted) {
+      // false = proses simpan gagal; null (Batal) tidak masuk sini.
       _message('Assignment gagal disimpan atau sudah ada');
     }
   }
