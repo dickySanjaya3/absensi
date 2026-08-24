@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
@@ -35,54 +36,127 @@ class _GuruDashboardState extends State<GuruDashboard> {
     DateTime? lastDetectAt;
     String? lastCode;
 
+    // PENTING: variabel overlay HARUS di luar builder StatefulBuilder.
+    // Kalau dideklarasikan di dalam builder, tiap kali setModalState()
+    // dipanggil, builder dijalankan ulang dan variabel ini ke-reset ke
+    // null sebelum sempat dirender -> overlay tidak akan pernah muncul.
+    String? overlayNama;
+    bool overlaySukses = true;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            AppBar(
-              title: const Text('Pindai QR Siswa'),
-              automaticallyImplyLeading: false,
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Selesai', style: TextStyle(color: Colors.white)),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          void showOverlay(String nama, bool sukses) {
+            setModalState(() {
+              overlayNama = nama;
+              overlaySukses = sukses;
+            });
+            Future.delayed(const Duration(milliseconds: 900), () {
+              if (context.mounted) {
+                setModalState(() => overlayNama = null);
+              }
+            });
+          }
+
+          return SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Column(
+              children: [
+                AppBar(
+                  title: const Text('Pindai QR Siswa'),
+                  automaticallyImplyLeading: false,
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Selesai',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'Arahkan kamera ke kartu QR tiap siswa satu per satu. '
+                    'Scanner tetap terbuka sampai kamu tekan "Selesai".',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ),
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      MobileScanner(
+                        onDetect: (capture) {
+                          final List<Barcode> barcodes = capture.barcodes;
+                          if (barcodes.isEmpty) return;
+                          final String rawCode = barcodes.first.rawValue ?? '';
+                          if (rawCode.isEmpty) return;
+
+                          final now = DateTime.now();
+                          if (rawCode == lastCode &&
+                              lastDetectAt != null &&
+                              now.difference(lastDetectAt!) <
+                                  const Duration(seconds: 2)) {
+                            return; // masih kode yang sama, abaikan supaya tidak dobel
+                          }
+                          lastCode = rawCode;
+                          lastDetectAt = now;
+
+                          _processAttendance(rawCode, showOverlay);
+                        },
+                      ),
+                      // Overlay feedback: centang hijau (sukses) atau silang merah (gagal)
+                      if (overlayNama != null)
+                        Container(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedScale(
+                                scale: 1.0,
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.elasticOut,
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: overlaySukses
+                                        ? const Color(0xFF1FA97A)
+                                        : const Color(0xFFE0587A),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    overlaySukses
+                                        ? Icons.check_rounded
+                                        : Icons.close_rounded,
+                                    color: Colors.white,
+                                    size: 56,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                overlayNama!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                'Arahkan kamera ke kartu QR tiap siswa satu per satu. '
-                'Scanner tetap terbuka sampai kamu tekan "Selesai".',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ),
-            Expanded(
-              child: MobileScanner(
-                onDetect: (capture) {
-                  final List<Barcode> barcodes = capture.barcodes;
-                  if (barcodes.isEmpty) return;
-                  final String rawCode = barcodes.first.rawValue ?? '';
-                  if (rawCode.isEmpty) return;
-
-                  final now = DateTime.now();
-                  if (rawCode == lastCode &&
-                      lastDetectAt != null &&
-                      now.difference(lastDetectAt!) < const Duration(seconds: 2)) {
-                    return; // masih kode yang sama, abaikan supaya tidak dobel
-                  }
-                  lastCode = rawCode;
-                  lastDetectAt = now;
-
-                  _processAttendance(rawCode);
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -90,19 +164,17 @@ class _GuruDashboardState extends State<GuruDashboard> {
   /// Scan QR TIDAK langsung menulis ke backend lagi. Hasil scan cuma
   /// disimpan ke state lokal (_scanResults) dulu; guru mengoreksi &
   /// mengirim semuanya sekaligus lewat layar "Tinjau Absensi".
-  Future<void> _processAttendance(String qrData) async {
+  Future<void> _processAttendance(
+    String qrData,
+    void Function(String nama, bool sukses) showOverlay,
+  ) async {
     if (_studentsCache.isEmpty) {
       _studentsCache = await _sheetsService.getStudents(kelas: widget.kelas);
     }
     final studentId = QRService.validateQR(qrData, _studentsCache);
     if (studentId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('QR tidak valid, kadaluarsa, atau bukan siswa kelas ini'),
-          ),
-        );
-      }
+      HapticFeedback.heavyImpact();
+      showOverlay('QR tidak valid /\nbukan siswa kelas ini', false);
       return;
     }
 
@@ -113,14 +185,8 @@ class _GuruDashboardState extends State<GuruDashboard> {
 
     setState(() => _scanResults[studentId] = 'Hadir');
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ditandai Hadir: ${nama?.isNotEmpty == true ? nama : studentId}'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    }
+    HapticFeedback.mediumImpact();
+    showOverlay(nama?.isNotEmpty == true ? nama! : studentId, true);
   }
 
   Future<void> _bukaTinjauAbsensi() async {
@@ -164,7 +230,19 @@ class _GuruDashboardState extends State<GuruDashboard> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(title: Text('${widget.kelas} - ${widget.mapel}')),
+      appBar: AppBar(
+        title: Text('${widget.kelas} - ${widget.mapel}'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Ganti Kelas/Mapel',
+          onPressed: () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const OnboardingKelasMapelScreen(),
+            ),
+          ),
+        ),
+      ),
       body: pages[_currentIndex],
       floatingActionButton: _scanResults.isEmpty
           ? null

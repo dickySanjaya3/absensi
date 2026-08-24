@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -39,7 +40,9 @@ class SheetsService {
           ..headers['Content-Type'] = 'application/json'
           ..body = bodyStr;
 
-        var streamedResponse = await client.send(request);
+        var streamedResponse = await client
+            .send(request)
+            .timeout(const Duration(seconds: 20));
         var response = await http.Response.fromStream(streamedResponse);
 
         // Ikuti redirect manual dengan GET (bukan POST!). Apps Script sudah
@@ -52,7 +55,9 @@ class SheetsService {
             response.headers['location'] != null &&
             redirectCount < 5) {
           final nextUrl = response.headers['location']!;
-          response = await client.get(Uri.parse(nextUrl));
+          response = await client
+              .get(Uri.parse(nextUrl))
+              .timeout(const Duration(seconds: 20));
           redirectCount++;
         }
 
@@ -63,6 +68,13 @@ class SheetsService {
           return {'ok': false, 'error': 'HTTP ${response.statusCode}'};
         }
         return jsonDecode(response.body) as Map<String, dynamic>;
+      } on TimeoutException {
+        return {
+          'ok': false,
+          'error':
+              'Koneksi timeout (20 detik). Periksa apakah HP/emulator '
+              'terhubung ke internet, lalu coba lagi.',
+        };
       } finally {
         client.close();
       }
@@ -80,6 +92,15 @@ class SheetsService {
       role: res['role'] as String,
       nama: (res['nama'] ?? '') as String,
     );
+  }
+
+  /// Perbaiki data lama yang kolom Nama & Jenis Kelamin-nya ketuker (bug
+  /// parser import massal versi lama). Return jumlah baris yang diperbaiki,
+  /// atau null kalau request gagal.
+  Future<int?> repairKelasNamaJk(String kelas) async {
+    final res = await _call('repairKelasNamaJk', {'kelas': kelas});
+    if (res['ok'] != true) return null;
+    return (res['diperbaiki'] as num?)?.toInt();
   }
 
   Future<List<Map<String, dynamic>>> getStudents({String? kelas}) async {
@@ -128,6 +149,22 @@ class SheetsService {
     return res['ok'] == true;
   }
 
+  /// Import banyak siswa sekaligus ke 1 kelas (fitur "Import Massal").
+  /// [items] = daftar {nama, nis, jenisKelamin}. ID tiap siswa tetap
+  /// di-generate otomatis oleh backend, tidak perlu dikirim dari sini.
+  /// Return jumlah siswa yang berhasil diimport, atau null kalau gagal.
+  Future<int?> addStudentsBatch({
+    required String kelas,
+    required List<Map<String, String>> items,
+  }) async {
+    final res = await _call('addStudentsBatch', {
+      'kelas': kelas,
+      'items': items,
+    });
+    if (res['ok'] != true) return null;
+    return (res['count'] as num?)?.toInt();
+  }
+
   Future<bool> deleteStudent({
     required String kelas,
     required int rowNumber,
@@ -158,6 +195,16 @@ class SheetsService {
   Future<bool> deleteClass(String namaKelas) async {
     final res = await _call('deleteClass', {'namaKelas': namaKelas});
     return res['ok'] == true;
+  }
+
+  /// Scan semua tab spreadsheet, daftarkan tab kelas lama yang belum
+  /// terdaftar di index "Kelas" (perbaikan data lama). Return daftar nama
+  /// kelas yang baru ditemukan & didaftarkan (bisa kosong kalau semua sudah
+  /// terdaftar), atau null kalau request gagal total.
+  Future<List<String>?> syncKelasFromSheets() async {
+    final res = await _call('syncKelas', {});
+    if (res['ok'] != true) return null;
+    return (res['ditemukan'] as List).map((e) => e.toString()).toList();
   }
 
   Future<List<Map<String, dynamic>>> getAssignments(String emailGuru) async {
@@ -233,7 +280,11 @@ class SheetsService {
   /// Simpan absensi 1 kelas sekaligus (dipakai layar Tinjau Absensi).
   /// [items] = daftar {siswaId, status} untuk SEMUA siswa di kelas itu,
   /// baik yang sudah discan maupun yang diisi manual oleh guru.
-  Future<bool> writeAttendanceBatch({
+  /// Simpan absensi 1 kelas sekaligus (dipakai layar Tinjau Absensi).
+  /// [items] = daftar {siswaId, status} untuk SEMUA siswa di kelas itu,
+  /// baik yang sudah discan maupun yang diisi manual oleh guru.
+  /// Return null kalau sukses, atau pesan error asli dari server kalau gagal.
+  Future<String?> writeAttendanceBatch({
     required String guruEmail,
     required String kelas,
     required String mapel,
@@ -245,7 +296,8 @@ class SheetsService {
       'mapel': mapel,
       'items': items,
     });
-    return res['ok'] == true;
+    if (res['ok'] == true) return null;
+    return res['error']?.toString() ?? 'Gagal menyimpan absensi';
   }
 
   Future<bool> updateAttendanceStatus({

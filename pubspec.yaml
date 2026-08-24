@@ -30,6 +30,9 @@ dependencies:
   # Buka link rekap bulanan di browser
   url_launcher: ^6.3.0
 
+  # Simpan sesi login supaya tidak logout tiap app ditutup
+  shared_preferences: ^2.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

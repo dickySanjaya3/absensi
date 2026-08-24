@@ -101,6 +101,29 @@ class _OnboardingKelasMapelScreenState
     );
   }
 
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Kamu perlu login lagi untuk masuk ke aplikasi.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<AuthService>().signOut();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final nama = context.watch<AuthService>().currentUser?.nama ?? '';
@@ -140,10 +163,14 @@ class _OnboardingKelasMapelScreenState
               onPressed: () => setState(() => _selectedKelas = null),
             )
           else
-            const CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.white24,
-              child: Icon(Icons.person, color: Colors.white),
+            IconButton(
+              icon: const CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white24,
+                child: Icon(Icons.logout, color: Colors.white),
+              ),
+              tooltip: 'Keluar',
+              onPressed: () => _confirmLogout(context),
             ),
           const SizedBox(width: 12),
           Expanded(

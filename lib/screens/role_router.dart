@@ -13,6 +13,12 @@ class RoleRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
 
+    if (auth.isRestoring) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     switch (auth.currentRole) {
       case UserRole.admin:
         return const AdminDashboard();

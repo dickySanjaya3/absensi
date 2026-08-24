@@ -4,92 +4,278 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../services/auth_service.dart';
 import '../../services/sheets_services.dart';
 import 'crud_assignment_screen.dart';
 import 'crud_guru_screen.dart';
 import 'crud_kelas_screen.dart';
 import 'crud_siswa_screen.dart';
 
-class AdminDashboard extends StatelessWidget {
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
+
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> {
+  final SheetsService _sheetsService = SheetsService();
+  int _currentIndex = 0;
+
+  int? _totalGuru;
+  int? _totalSiswa;
+  int? _totalKelas;
+  bool _loadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    setState(() => _loadingStats = true);
+    final results = await Future.wait([
+      _sheetsService.getGurus(),
+      _sheetsService.getStudents(),
+      _sheetsService.getClasses(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _totalGuru = (results[0] as List).length;
+      _totalSiswa = (results[1] as List).length;
+      _totalKelas = (results[2] as List).length;
+      _loadingStats = false;
+    });
+  }
+
+  void _bukaHalaman(Widget screen) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    ).then((_) => _loadStats()); // refresh angka setelah balik dari CRUD
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard Admin')),
-      drawer: Drawer(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        title: const Text('Dashboard Admin'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Keluar',
+            onPressed: () => _confirmLogout(context),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadStats,
         child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            const DrawerHeader(child: Text('Menu Admin')),
-            ListTile(
-              leading: const Icon(Icons.school),
-              title: const Text('CRUD Guru'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CrudGuruScreen()),
-                );
-              },
+            const Text(
+              'Menu Manajemen',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            ListTile(
-              leading: const Icon(Icons.class_),
-              title: const Text('Kelola Kelas'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CrudKelasScreen()),
-                );
-              },
+            const SizedBox(height: 12),
+            _ManajemenCard(
+              icon: Icons.person_outline,
+              iconColor: const Color(0xFF2F6FED),
+              title: 'Manajemen Guru',
+              subtitle: 'Tambah, edit, dan hapus data guru.',
+              totalLabel: 'Total Guru',
+              totalValue: _loadingStats ? null : _totalGuru,
+              onKelola: () => _bukaHalaman(const CrudGuruScreen()),
             ),
-            ListTile(
-              leading: const Icon(Icons.people),
-              title: const Text('CRUD Siswa'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CrudSiswaScreen()),
-                );
-              },
+            const SizedBox(height: 12),
+            _ManajemenCard(
+              icon: Icons.people_outline,
+              iconColor: const Color(0xFF1FA97A),
+              title: 'Manajemen Siswa',
+              subtitle: 'Kelola data siswa dan pemetaan kelas.',
+              totalLabel: 'Total Siswa',
+              totalValue: _loadingStats ? null : _totalSiswa,
+              onKelola: () => _bukaHalaman(const CrudSiswaScreen()),
             ),
-            ListTile(
-              leading: const Icon(Icons.assignment),
-              title: const Text('Kelola Assignment'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CrudAssignmentScreen(),
-                  ),
-                );
-              },
+            const SizedBox(height: 12),
+            _ManajemenCard(
+              icon: Icons.school_outlined,
+              iconColor: const Color(0xFFE7A008),
+              title: 'Manajemen Kelas',
+              subtitle: 'Atur kelas dan daftar per kelas.',
+              totalLabel: 'Total Kelas',
+              totalValue: _loadingStats ? null : _totalKelas,
+              onKelola: () => _bukaHalaman(const CrudKelasScreen()),
             ),
-            ListTile(
-              leading: const Icon(Icons.badge),
-              title: const Text('Kartu ID / Barcode'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const GenerateQRScreen()),
-                );
-              },
+            const SizedBox(height: 12),
+            _ManajemenCard(
+              icon: Icons.assignment_outlined,
+              iconColor: const Color(0xFF7C3AED),
+              title: 'Kelola Assignment',
+              subtitle: 'Atur penugasan guru ke kelas & mapel.',
+              totalLabel: null,
+              totalValue: null,
+              onKelola: () => _bukaHalaman(const CrudAssignmentScreen()),
+            ),
+            const SizedBox(height: 12),
+            _ManajemenCard(
+              icon: Icons.qr_code_2_rounded,
+              iconColor: const Color(0xFFE0587A),
+              title: 'Kartu ID / Barcode',
+              subtitle: 'Generate & cetak kartu QR siswa.',
+              totalLabel: null,
+              totalValue: null,
+              onKelola: () => _bukaHalaman(const GenerateQRScreen()),
             ),
           ],
         ),
       ),
-      body: const Center(child: Text('Selamat Datang, Admin!')),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.indigo,
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          switch (index) {
+            case 0:
+              break; // Beranda, sudah di sini
+            case 1:
+              _bukaHalaman(const CrudGuruScreen());
+              break;
+            case 2:
+              _bukaHalaman(const CrudSiswaScreen());
+              break;
+            case 3:
+              _bukaHalaman(const CrudKelasScreen());
+              break;
+          }
+          // Kembalikan highlight ke Beranda setelah halaman lain ditutup,
+          // karena tab lain sebenarnya membuka halaman terpisah (push),
+          // bukan berpindah tab di layar yang sama.
+          if (index != 0) {
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (mounted) setState(() => _currentIndex = 0);
+            });
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
+          BottomNavigationBarItem(icon: Icon(Icons.school_outlined), label: 'Guru'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Siswa'),
+          BottomNavigationBarItem(icon: Icon(Icons.class_outlined), label: 'Kelas'),
+        ],
+      ),
     );
   }
 }
 
-// Flowchart: Ketik Nama -> Cari Database -> Pilih -> Lihat/Generate QR -> Cetak Kartu
+class _ManajemenCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final String? totalLabel;
+  final int? totalValue;
+  final VoidCallback onKelola;
+
+  const _ManajemenCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.totalLabel,
+    required this.totalValue,
+    required this.onKelola,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor),
+              ),
+              const Spacer(),
+              if (totalLabel != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      totalLabel!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    totalValue == null
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            totalValue.toString(),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onKelola,
+              icon: const Icon(Icons.settings_outlined, size: 18),
+              label: const Text('Kelola'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class GenerateQRScreen extends StatefulWidget {
   const GenerateQRScreen({super.key});
 
@@ -114,6 +300,9 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
           .where(
             (student) =>
                 student['Nama'].toString().toLowerCase().contains(
+                  query.toLowerCase(),
+                ) ||
+                student['NIS'].toString().toLowerCase().contains(
                   query.toLowerCase(),
                 ) ||
                 student['Jenis Kelamin'].toString().toLowerCase().contains(
@@ -271,7 +460,7 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
             TextField(
               controller: _searchController,
               decoration: const InputDecoration(
-                labelText: 'Ketik nama atau NIM siswa',
+                labelText: 'Ketik nama atau NIS siswa',
                 suffixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
@@ -287,7 +476,7 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                         return ListTile(
                           title: Text(siswa['Nama'].toString()),
                           subtitle: Text(
-                            'Kelas: ${siswa['kelas']} | ID: ${siswa['ID']}',
+                            'Kelas: ${siswa['kelas']} | NIS: ${siswa['NIS'] ?? '-'}',
                           ),
                           onTap: () => setState(() => selectedSiswa = siswa),
                         );
@@ -355,7 +544,9 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                                     ),
                                   ),
                                   Text('Kelas: ${selectedSiswa!['kelas']}'),
-                                  Text('ID: ${selectedSiswa!['ID']}'),
+                                  Text(
+                                    'NIS: ${selectedSiswa!['NIS'] ?? '-'}',
+                                  ),
                                   Text(
                                     'Jenis Kelamin: ${selectedSiswa!['Jenis Kelamin']}',
                                   ),
@@ -406,5 +597,29 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
         ),
       ),
     );
+  }
+}
+
+
+Future<void> _confirmLogout(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Keluar dari akun?'),
+      content: const Text('Kamu perlu login lagi untuk masuk ke aplikasi.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Keluar'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true && context.mounted) {
+    context.read<AuthService>().signOut();
   }
 }

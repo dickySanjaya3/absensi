@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/sheets_services.dart';
 import 'crud_siswa_screen.dart';
+import 'import_siswa_screen.dart';
 
 /// Layar "Kelola Kelas": admin bisa menambah kelas baru, menghapusnya dari
 /// daftar, dan menekan satu kelas untuk masuk ke CRUD siswa kelas tsb.
@@ -31,6 +32,29 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
       _classes = classes;
       _isLoading = false;
     });
+  }
+
+  Future<void> _sinkronkanKelas() async {
+    setState(() => _isLoading = true);
+    final ditemukan = await _sheetsService.syncKelasFromSheets();
+    if (!mounted) return;
+    await _loadClasses();
+    if (!mounted) return;
+    if (ditemukan == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal sinkronisasi. Coba lagi.')),
+      );
+    } else if (ditemukan.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Semua kelas di spreadsheet sudah terdaftar.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${ditemukan.length} kelas lama ditemukan & didaftarkan: ${ditemukan.join(', ')}'),
+        ),
+      );
+    }
   }
 
   Future<void> _tambahKelas() async {
@@ -143,11 +167,41 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kelola Kelas')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _tambahKelas,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Kelas'),
+      appBar: AppBar(
+        title: const Text('Kelola Kelas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sinkronkan dari Spreadsheet',
+            onPressed: _sinkronkanKelas,
+          ),
+        ],
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'import_massal',
+            onPressed: () async {
+              final imported = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => const ImportSiswaScreen()),
+              );
+              if (imported == true) _loadClasses();
+            },
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Import Massal'),
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.indigo,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'tambah_kelas',
+            onPressed: _tambahKelas,
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah Kelas'),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

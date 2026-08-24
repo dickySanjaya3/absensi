@@ -83,7 +83,7 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
       };
     }).toList();
 
-    final ok = await _sheetsService.writeAttendanceBatch(
+    final errorMsg = await _sheetsService.writeAttendanceBatch(
       guruEmail: widget.guruEmail,
       kelas: widget.kelas,
       mapel: widget.mapel,
@@ -93,11 +93,11 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
 
-    if (ok) {
+    if (errorMsg == null) {
       Navigator.pop(context, true); // beri tahu layar sebelumnya: sukses
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan absensi. Coba lagi.')),
+        SnackBar(content: Text('Gagal menyimpan: $errorMsg')),
       );
     }
   }

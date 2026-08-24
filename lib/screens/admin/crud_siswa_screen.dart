@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/sheets_services.dart';
+import 'import_siswa_screen.dart';
 
 class CrudSiswaScreen extends StatefulWidget {
   /// Kalau diisi, layar ini dibuka langsung untuk kelas tsb (dari layar
@@ -239,10 +240,59 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
               ? 'Siswa Kelas ${widget.initialKelas}'
               : 'CRUD Data Siswa',
         ),
+        actions: [
+          if (_selectedKelas != null)
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'repair') {
+                  final n = await _sheetsService.repairKelasNamaJk(_selectedKelas!);
+                  if (!mounted) return;
+                  if (n == null) {
+                    _message('Gagal memperbaiki data. Coba lagi.');
+                  } else if (n == 0) {
+                    _message('Tidak ada data yang perlu diperbaiki.');
+                  } else {
+                    _message('$n data diperbaiki. Kolom Jenis Kelamin dikosongkan, silakan isi ulang manual.');
+                    await _loadStudents();
+                  }
+                }
+              },
+              itemBuilder: (ctx) => const [
+                PopupMenuItem(
+                  value: 'repair',
+                  child: Text('Perbaiki Nama/JK yang ketuker'),
+                ),
+              ],
+            ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showFormDialog(),
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_selectedKelas != null)
+            FloatingActionButton.extended(
+              heroTag: 'import_massal_siswa',
+              onPressed: () async {
+                final imported = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ImportSiswaScreen(initialKelas: _selectedKelas),
+                  ),
+                );
+                if (imported == true) await _loadStudents();
+              },
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Import Massal'),
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.indigo,
+            ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'tambah_siswa',
+            onPressed: () => _showFormDialog(),
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
