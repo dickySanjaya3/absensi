@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sheets_services.dart';
+import '../role_router.dart';
 import 'crud_assignment_screen.dart';
 import 'crud_guru_screen.dart';
 import 'crud_kelas_screen.dart';
@@ -24,7 +25,6 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final SheetsService _sheetsService = SheetsService();
-  int _currentIndex = 0;
 
   int? _totalGuru;
   int? _totalSiswa;
@@ -135,41 +135,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.indigo,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-          switch (index) {
-            case 0:
-              break; // Beranda, sudah di sini
-            case 1:
-              _bukaHalaman(const CrudGuruScreen());
-              break;
-            case 2:
-              _bukaHalaman(const CrudSiswaScreen());
-              break;
-            case 3:
-              _bukaHalaman(const CrudKelasScreen());
-              break;
-          }
-          // Kembalikan highlight ke Beranda setelah halaman lain ditutup,
-          // karena tab lain sebenarnya membuka halaman terpisah (push),
-          // bukan berpindah tab di layar yang sama.
-          if (index != 0) {
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (mounted) setState(() => _currentIndex = 0);
-            });
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.school_outlined), label: 'Guru'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Siswa'),
-          BottomNavigationBarItem(icon: Icon(Icons.class_outlined), label: 'Kelas'),
-        ],
       ),
     );
   }
@@ -621,5 +586,13 @@ Future<void> _confirmLogout(BuildContext context) async {
   );
   if (confirmed == true && context.mounted) {
     context.read<AuthService>().signOut();
+    // Bersihkan seluruh stack navigator dan pasang ulang RoleRouter,
+    // supaya logout selalu benar-benar kembali ke halaman login, tidak
+    // cuma mengandalkan reaktivitas provider (yang bisa putus kalau
+    // layar ini dibuka lewat push/pushReplacement dari layar lain).
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const RoleRouter()),
+      (route) => false,
+    );
   }
 }

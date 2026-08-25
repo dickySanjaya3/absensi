@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/qr_service.dart';
 import '../../services/sheets_services.dart';
+import '../role_router.dart';
 import 'onboarding_screen.dart';
 import 'review_absensi_screen.dart';
 import 'riwayat_screen.dart';
@@ -24,13 +25,11 @@ class _GuruDashboardState extends State<GuruDashboard> {
   int _currentIndex = 0;
   final SheetsService _sheetsService = SheetsService();
 
-  // Hasil scan sesi ini yang BELUM disimpan ke backend: siswaId -> status.
-  // Diisi tiap kali scan sukses, dikosongkan lagi setelah berhasil disimpan
-  // lewat layar "Tinjau Absensi".
   final Map<String, String> _scanResults = {};
   List<Map<String, dynamic>> _studentsCache = [];
 
   Future<void> _confirmLogout(BuildContext context) async {
+    // sama seperti sebelumnya
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -50,21 +49,37 @@ class _GuruDashboardState extends State<GuruDashboard> {
     );
     if (confirmed == true && context.mounted) {
       context.read<AuthService>().signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const RoleRouter()),
+        (route) => false,
+      );
     }
   }
 
-  void _openCameraScanner() {
-    // Cegah 1 kode QR yang sama terdeteksi berkali-kali dalam waktu singkat
-    // (kamera bisa fire onDetect beberapa kali per detik untuk kode yang sama).
-    DateTime? lastDetectAt;
-    String? lastCode;
+  Future<void> _openCameraScanner() async {
+    // Refresh data siswa
+    try {
+      final students = await _sheetsService.getStudents(kelas: widget.kelas);
+      if (!mounted) return;
+      _studentsCache = students;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat data siswa: $e')),
+      );
+      return;
+    }
 
-    // PENTING: variabel overlay HARUS di luar builder StatefulBuilder.
-    // Kalau dideklarasikan di dalam builder, tiap kali setModalState()
-    // dipanggil, builder dijalankan ulang dan variabel ini ke-reset ke
-    // null sebelum sempat dirender -> overlay tidak akan pernah muncul.
+    bool isProcessing = false;
+    String? lastCode;
+    DateTime? lastDetectAt;
+
+    // Overlay state
     String? overlayNama;
     bool overlaySukses = true;
+
+    // Controller akan dibuat ulang setiap kali scan selesai
+    MobileScannerController controller = MobileScannerController();
 
     showModalBottomSheet(
       context: context,
@@ -72,6 +87,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           void showOverlay(String nama, bool sukses) {
+            if (!context.mounted) return;
             setModalState(() {
               overlayNama = nama;
               overlaySukses = sukses;
@@ -83,6 +99,14 @@ class _GuruDashboardState extends State<GuruDashboard> {
             });
           }
 
+          void resetScanner() {
+            // Dispose controller lama dan buat baru
+            controller.dispose();
+            controller = MobileScannerController();
+            // Paksa setModalState untuk rebuild MobileScanner dengan controller baru
+            setModalState(() {});
+          }
+
           return SizedBox(
             height: MediaQuery.of(context).size.height * 0.7,
             child: Column(
@@ -92,7 +116,10 @@ class _GuruDashboardState extends State<GuruDashboard> {
                   automaticallyImplyLeading: false,
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        controller.dispose();
+                        Navigator.pop(context);
+                      },
                       child: const Text(
                         'Selesai',
                         style: TextStyle(color: Colors.white),
@@ -113,10 +140,15 @@ class _GuruDashboardState extends State<GuruDashboard> {
                     alignment: Alignment.center,
                     children: [
                       MobileScanner(
-                        onDetect: (capture) {
-                          final List<Barcode> barcodes = capture.barcodes;
+                        key: ValueKey(controller), // force rebuild when controller changes
+                        controller: controller,
+                        onDetect: (capture) async {
+                          // Cegah proses bersamaan
+                          if (isProcessing || overlayNama != null) return;
+
+                          final barcodes = capture.barcodes;
                           if (barcodes.isEmpty) return;
-                          final String rawCode = barcodes.first.rawValue ?? '';
+                          final rawCode = barcodes.first.rawValue ?? '';
                           if (rawCode.isEmpty) return;
 
                           final now = DateTime.now();
@@ -124,15 +156,32 @@ class _GuruDashboardState extends State<GuruDashboard> {
                               lastDetectAt != null &&
                               now.difference(lastDetectAt!) <
                                   const Duration(seconds: 2)) {
-                            return; // masih kode yang sama, abaikan supaya tidak dobel
+                            return;
                           }
+
                           lastCode = rawCode;
                           lastDetectAt = now;
+                          isProcessing = true;
 
-                          _processAttendance(rawCode, showOverlay);
+                          // Proses absensi
+                          try {
+                            await _processAttendance(rawCode, showOverlay);
+                          } catch (e) {
+                            debugPrint('Error: $e');
+                          }
+
+                          // Tunggu sampai popup hilang (900ms) + ekstra
+                          await Future.delayed(const Duration(milliseconds: 1000));
+
+                          // Reset scanner dengan membuat controller baru
+                          resetScanner();
+
+                          // Reset status untuk scan berikutnya
+                          isProcessing = false;
+                          lastCode = null;
+                          lastDetectAt = null;
                         },
                       ),
-                      // Overlay feedback: centang hijau (sukses) atau silang merah (gagal)
                       if (overlayNama != null)
                         Container(
                           color: Colors.black.withValues(alpha: 0.55),
@@ -181,12 +230,11 @@ class _GuruDashboardState extends State<GuruDashboard> {
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      controller.dispose();
+    });
   }
 
-  /// Scan QR TIDAK langsung menulis ke backend lagi. Hasil scan cuma
-  /// disimpan ke state lokal (_scanResults) dulu; guru mengoreksi &
-  /// mengirim semuanya sekaligus lewat layar "Tinjau Absensi".
   Future<void> _processAttendance(
     String qrData,
     void Function(String nama, bool sukses) showOverlay,
@@ -194,6 +242,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
     if (_studentsCache.isEmpty) {
       _studentsCache = await _sheetsService.getStudents(kelas: widget.kelas);
     }
+
     final studentId = QRService.validateQR(qrData, _studentsCache);
     if (studentId == null) {
       HapticFeedback.heavyImpact();
@@ -206,6 +255,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
       orElse: () => const {},
     )['Nama']?.toString();
 
+    if (!mounted) return;
     setState(() => _scanResults[studentId] = 'Hadir');
 
     HapticFeedback.mediumImpact();
@@ -229,9 +279,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
     );
 
     if (saved == true && mounted) {
-      setState(() {
-        _scanResults.clear(); // sesi absen selesai, mulai bersih lagi
-      });
+      setState(() => _scanResults.clear());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Absensi berhasil disimpan')),
       );
@@ -247,7 +295,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
         mapel: widget.mapel,
         onLihatSemua: () => setState(() => _currentIndex = 2),
       ),
-      const SizedBox.shrink(), // Placeholder index 1 (Tombol Scan)
+      const SizedBox.shrink(),
       RiwayatScreen(kelas: widget.kelas, mapel: widget.mapel),
     ];
 
@@ -285,7 +333,6 @@ class _GuruDashboardState extends State<GuruDashboard> {
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index == 0) {
-            // Tombol Beranda -> kembali ke halaman pilih kelas & mapel.
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -293,7 +340,7 @@ class _GuruDashboardState extends State<GuruDashboard> {
               ),
             );
           } else if (index == 1) {
-            _openCameraScanner(); // Tombol tengah langsung membuka scanner (F-GURU-05)
+            _openCameraScanner();
           } else {
             setState(() => _currentIndex = index);
           }
@@ -313,6 +360,8 @@ class _GuruDashboardState extends State<GuruDashboard> {
     );
   }
 }
+
+// ======================== TAB BERANDA (sama seperti sebelumnya) ========================
 
 class _BerandaTab extends StatefulWidget {
   final String kelas;
@@ -367,7 +416,6 @@ class _BerandaTabState extends State<_BerandaTab> {
             parsed.month == now.month &&
             parsed.day == now.day;
       }
-      // fallback kalau formatnya bukan ISO, cek awal string 'yyyy-MM-dd'
       final todayStr =
           '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       return ts.startsWith(todayStr);

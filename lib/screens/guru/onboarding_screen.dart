@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sheets_services.dart';
+import '../role_router.dart';
 import 'guru_dashboard.dart';
 
 class OnboardingKelasMapelScreen extends StatefulWidget {
@@ -121,6 +122,15 @@ class _OnboardingKelasMapelScreenState
     );
     if (confirmed == true && context.mounted) {
       context.read<AuthService>().signOut();
+      // Bersihkan seluruh stack navigator dan pasang ulang RoleRouter,
+      // supaya logout selalu kembali ke halaman login dengan pasti -
+      // tidak bergantung pada apakah layar ini masih terhubung ke
+      // RoleRouter di root atau tidak (mis. kalau layar ini pernah
+      // dibuka lewat push/pushReplacement dari layar lain).
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const RoleRouter()),
+        (route) => false,
+      );
     }
   }
 

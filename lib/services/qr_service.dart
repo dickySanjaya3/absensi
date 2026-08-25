@@ -10,8 +10,9 @@ class QRService {
   /// membuat fitur "generate ulang barcode" benar-benar menonaktifkan QR lama.
   static String? validateQR(String payload, List<Map<String, dynamic>> students) {
     for (final s in students) {
-      final activeQr = (s['Barcode'] ?? '').toString();
-      if (activeQr.isNotEmpty && activeQr == payload) {
+      final activeQr = (s['Barcode'] ?? '').toString().trim();
+      final scannedQr = payload.trim();
+      if (activeQr.isNotEmpty && activeQr == scannedQr) {
         return (s['ID'] ?? '').toString();
       }
     }

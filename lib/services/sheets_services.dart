@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// GANTI dengan URL Web App hasil Deploy dari Apps Script kamu.
-/// Contoh: https://script.google.com/macros/s/AKfycb.../exec
 const String kAppsScriptUrl ='https://script.google.com/macros/s/AKfycbyjgTTLIRVoo2lbgQ3RMq0vkbPTriSgwm27YW9VJR4ovJeMaB-KdC4l5FvP-iQ2CfrW/exec';
 
 class UserCredentials {
@@ -26,13 +25,6 @@ class SheetsService {
     try {
       final bodyStr = jsonEncode({'action': action, 'params': params});
 
-      // PENTING: Apps Script Web App SELALU membalas dengan 302 redirect
-      // ke script.googleusercontent.com. Kalau memakai http.post() biasa,
-      // redirect ini otomatis diikuti oleh package:http, dan sesuai standar
-      // HTTP, method-nya ikut berubah dari POST menjadi GET (body ikut hilang).
-      // Akibatnya doPost() di Apps Script tidak pernah terpanggil.
-      // Solusinya: matikan auto-redirect, lalu follow manual sambil tetap
-      // pakai POST + body yang sama.
       final client = http.Client();
       try {
         var request = http.Request('POST', Uri.parse(kAppsScriptUrl))
@@ -42,13 +34,9 @@ class SheetsService {
 
         var streamedResponse = await client
             .send(request)
-            .timeout(const Duration(seconds: 20));
+            .timeout(const Duration(seconds: 60)); // ⬅️ PERPANJANG TIMEOUT JADI 60 DETIK
         var response = await http.Response.fromStream(streamedResponse);
 
-        // Ikuti redirect manual dengan GET (bukan POST!). Apps Script sudah
-        // MEMPROSES doPost() dan menghitung hasilnya pada request pertama;
-        // redirect 302 ini hanya menunjuk ke URL sementara berisi hasil JSON
-        // yang sudah jadi, dan untuk MENGAMBILNYA harus pakai GET tanpa body.
         int redirectCount = 0;
         while (response.statusCode >= 300 &&
             response.statusCode < 400 &&
@@ -57,7 +45,7 @@ class SheetsService {
           final nextUrl = response.headers['location']!;
           response = await client
               .get(Uri.parse(nextUrl))
-              .timeout(const Duration(seconds: 20));
+              .timeout(const Duration(seconds: 60)); // ⬅️ juga 60 detik
           redirectCount++;
         }
 
@@ -72,7 +60,7 @@ class SheetsService {
         return {
           'ok': false,
           'error':
-              'Koneksi timeout (20 detik). Periksa apakah HP/emulator '
+              'Koneksi timeout (60 detik). Periksa apakah HP/emulator '
               'terhubung ke internet, lalu coba lagi.',
         };
       } finally {
@@ -94,9 +82,6 @@ class SheetsService {
     );
   }
 
-  /// Perbaiki data lama yang kolom Nama & Jenis Kelamin-nya ketuker (bug
-  /// parser import massal versi lama). Return jumlah baris yang diperbaiki,
-  /// atau null kalau request gagal.
   Future<int?> repairKelasNamaJk(String kelas) async {
     final res = await _call('repairKelasNamaJk', {'kelas': kelas});
     if (res['ok'] != true) return null;
@@ -149,10 +134,6 @@ class SheetsService {
     return res['ok'] == true;
   }
 
-  /// Import banyak siswa sekaligus ke 1 kelas (fitur "Import Massal").
-  /// [items] = daftar {nama, nis, jenisKelamin}. ID tiap siswa tetap
-  /// di-generate otomatis oleh backend, tidak perlu dikirim dari sini.
-  /// Return jumlah siswa yang berhasil diimport, atau null kalau gagal.
   Future<int?> addStudentsBatch({
     required String kelas,
     required List<Map<String, String>> items,
@@ -182,25 +163,17 @@ class SheetsService {
     return (res['data'] as List).map((e) => e.toString()).toList();
   }
 
-  /// Tambah kelas baru. Backend otomatis menyiapkan tab siswa kosong
-  /// untuk kelas ini. Return pesan error kalau gagal (mis. nama dobel),
-  /// atau null kalau sukses.
   Future<String?> addClass(String namaKelas) async {
     final res = await _call('addClass', {'namaKelas': namaKelas});
     if (res['ok'] == true) return null;
     return res['error']?.toString() ?? 'Gagal menambah kelas';
   }
 
-  /// Hapus kelas dari daftar (tab data siswanya TIDAK ikut terhapus).
   Future<bool> deleteClass(String namaKelas) async {
     final res = await _call('deleteClass', {'namaKelas': namaKelas});
     return res['ok'] == true;
   }
 
-  /// Scan semua tab spreadsheet, daftarkan tab kelas lama yang belum
-  /// terdaftar di index "Kelas" (perbaikan data lama). Return daftar nama
-  /// kelas yang baru ditemukan & didaftarkan (bisa kosong kalau semua sudah
-  /// terdaftar), atau null kalau request gagal total.
   Future<List<String>?> syncKelasFromSheets() async {
     final res = await _call('syncKelas', {});
     if (res['ok'] != true) return null;
@@ -277,13 +250,6 @@ class SheetsService {
     return res['ok'] == true;
   }
 
-  /// Simpan absensi 1 kelas sekaligus (dipakai layar Tinjau Absensi).
-  /// [items] = daftar {siswaId, status} untuk SEMUA siswa di kelas itu,
-  /// baik yang sudah discan maupun yang diisi manual oleh guru.
-  /// Simpan absensi 1 kelas sekaligus (dipakai layar Tinjau Absensi).
-  /// [items] = daftar {siswaId, status} untuk SEMUA siswa di kelas itu,
-  /// baik yang sudah discan maupun yang diisi manual oleh guru.
-  /// Return null kalau sukses, atau pesan error asli dari server kalau gagal.
   Future<String?> writeAttendanceBatch({
     required String guruEmail,
     required String kelas,
@@ -354,10 +320,7 @@ class SheetsService {
     return res['ok'] == true;
   }
 
-  // ---------- BARCODE / KARTU ID (Tahap 2) ----------
-
-  /// Generate barcode baru untuk siswa (menonaktifkan barcode lama).
-  /// Return payload barcode baru, atau null kalau gagal.
+  // ---------- BARCODE / KARTU ID ----------
   Future<String?> generateBarcode({
     required String kelas,
     required String siswaId,
@@ -370,7 +333,6 @@ class SheetsService {
     return res['qrCode'] as String?;
   }
 
-  /// Reaktivasi barcode lama tertentu (dari histori) supaya jadi aktif kembali.
   Future<bool> reactivateBarcode({
     required String kelas,
     required String siswaId,
@@ -384,7 +346,6 @@ class SheetsService {
     return res['ok'] == true;
   }
 
-  /// Ambil histori generate/reaktivasi barcode untuk satu siswa.
   Future<List<Map<String, dynamic>>> getBarcodeHistory(String siswaId) async {
     final res = await _call('getBarcodeHistory', {'siswaId': siswaId});
     if (res['ok'] != true) return [];
@@ -392,10 +353,6 @@ class SheetsService {
   }
 
   // ---------- REKAP BULANAN ----------
-
-  /// Generate rekap bulanan sebagai Google Spreadsheet baru.
-  /// [yearMonth] format 'YYYY-MM', misal '2026-08'.
-  /// Return {url, error} - kalau gagal, url null dan error berisi pesan.
   Future<Map<String, String?>> exportMonthlyRecap({
     required String emailGuru,
     required String kelas,
