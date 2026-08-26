@@ -30,6 +30,12 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
   }
 
   Future<void> _showFormDialog({Map<String, dynamic>? guru, int? index}) async {
+    // 🔧 BUAT FOCUS NODE UNTUK SETIAP FIELD
+    final emailFocus = FocusNode();
+    final passwordFocus = FocusNode();
+    final namaFocus = FocusNode();
+    final statusFocus = FocusNode();
+
     final emailCtrl = TextEditingController(
       text: guru?['Email']?.toString() ?? '',
     );
@@ -44,105 +50,163 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
     );
     final formKey = GlobalKey<FormState>();
     bool isSaving = false;
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(guru == null ? 'Tambah Akun Guru' : 'Edit Akun Guru'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: emailCtrl,
-                    enabled: !isSaving,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (value) =>
-                        _required(value) ??
-                        (value!.contains('@') ? null : 'Email tidak valid'),
-                  ),
-                  TextFormField(
-                    controller: passwordCtrl,
-                    enabled: !isSaving,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    validator: (value) => value == null || value.length < 6
-                        ? 'Minimal 6 karakter'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: namaCtrl,
-                    enabled: !isSaving,
-                    decoration: const InputDecoration(labelText: 'Nama Guru'),
-                    validator: _required,
-                  ),
-                  TextFormField(
-                    controller: statusCtrl,
-                    enabled: !isSaving,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    validator: _required,
-                  ),
-                ],
+      builder: (ctx) {
+        // 🔧 FOCUS OTOMATIS KE EMAIL
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (emailFocus.canRequestFocus) {
+            emailFocus.requestFocus();
+          }
+        });
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(guru == null ? 'Tambah Akun Guru' : 'Edit Akun Guru'),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: emailCtrl,
+                      focusNode: emailFocus,
+                      enabled: !isSaving,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      validator: (value) =>
+                          _required(value) ??
+                          (value!.contains('@') ? null : 'Email tidak valid'),
+                      onFieldSubmitted: (_) {
+                        // Pindah ke password saat tekan Done
+                        passwordFocus.requestFocus();
+                      },
+                    ),
+                    TextFormField(
+                      controller: passwordCtrl,
+                      focusNode: passwordFocus,
+                      enabled: !isSaving,
+                      decoration: const InputDecoration(labelText: 'Password'),
+                      obscureText: true,
+                      validator: (value) => value == null || value.length < 6
+                          ? 'Minimal 6 karakter'
+                          : null,
+                      onFieldSubmitted: (_) {
+                        namaFocus.requestFocus();
+                      },
+                    ),
+                    TextFormField(
+                      controller: namaCtrl,
+                      focusNode: namaFocus,
+                      enabled: !isSaving,
+                      decoration: const InputDecoration(labelText: 'Nama Guru'),
+                      validator: _required,
+                      onFieldSubmitted: (_) {
+                        statusFocus.requestFocus();
+                      },
+                    ),
+                    TextFormField(
+                      controller: statusCtrl,
+                      focusNode: statusFocus,
+                      enabled: !isSaving,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      validator: _required,
+                    ),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: isSaving
+                    ? null
+                    : () {
+                        // 🔧 UNFOCUS SEMUA FOCUS NODE
+                        emailFocus.unfocus();
+                        passwordFocus.unfocus();
+                        namaFocus.unfocus();
+                        statusFocus.unfocus();
+                        // 🔧 DISPOSE FOCUS NODE
+                        emailFocus.dispose();
+                        passwordFocus.dispose();
+                        namaFocus.dispose();
+                        statusFocus.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, null);
+                          }
+                        });
+                      },
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        // 🔧 UNFOCUS SEMUA
+                        emailFocus.unfocus();
+                        passwordFocus.unfocus();
+                        namaFocus.unfocus();
+                        statusFocus.unfocus();
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        if (!ctx.mounted) return;
+                        setDialogState(() => isSaving = true);
+                        final saved = index == null
+                            ? await _sheetsService.addGuru(
+                                email: emailCtrl.text.trim(),
+                                nama: namaCtrl.text.trim(),
+                                password: passwordCtrl.text,
+                                status: statusCtrl.text.trim(),
+                              )
+                            : await _sheetsService.updateGuru(
+                                rowNumber: (_gurus[index]['_rowNumber'] as num)
+                                    .toInt(),
+                                email: emailCtrl.text.trim(),
+                                nama: namaCtrl.text.trim(),
+                                password: passwordCtrl.text,
+                                status: statusCtrl.text.trim(),
+                              );
+                        if (!ctx.mounted) return;
+                        // 🔧 DISPOSE FOCUS NODE
+                        emailFocus.dispose();
+                        passwordFocus.dispose();
+                        namaFocus.dispose();
+                        statusFocus.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, saved);
+                          }
+                        });
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Simpan'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: isSaving
-                  ? null
-                  : () {
-                      FocusScope.of(ctx).unfocus();
-                      Navigator.pop(ctx, null);
-                    },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      FocusScope.of(ctx).unfocus();
-                      setDialogState(() => isSaving = true);
-                      final saved = index == null
-                          ? await _sheetsService.addGuru(
-                              email: emailCtrl.text.trim(),
-                              nama: namaCtrl.text.trim(),
-                              password: passwordCtrl.text,
-                              status: statusCtrl.text.trim(),
-                            )
-                          : await _sheetsService.updateGuru(
-                              rowNumber: (_gurus[index]['_rowNumber'] as num)
-                                  .toInt(),
-                              email: emailCtrl.text.trim(),
-                              nama: namaCtrl.text.trim(),
-                              password: passwordCtrl.text,
-                              status: statusCtrl.text.trim(),
-                            );
-                      if (ctx.mounted) Navigator.pop(ctx, saved);
-                    },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
+
+    // 🔧 DISPOSE CONTROLLER
     emailCtrl.dispose();
     passwordCtrl.dispose();
     namaCtrl.dispose();
     statusCtrl.dispose();
+
     if (result == true) {
       await _loadGurus();
       if (mounted) _message('Data guru tersimpan');
     } else if (result == false && mounted) {
-      // false = proses simpan gagal; null (Batal) tidak masuk sini.
       _message('Data tidak tersimpan. Email mungkin sudah digunakan.');
     }
   }
@@ -151,6 +215,9 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
       value == null || value.trim().isEmpty ? 'Wajib diisi' : null;
 
   Future<void> _deleteGuru(int index) async {
+    // 🔧 BUAT FOCUS NODE
+    final focusNode = FocusNode();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -160,16 +227,30 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              });
+            },
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              });
+            },
             child: const Text('Hapus'),
           ),
         ],
       ),
     );
+    focusNode.dispose();
+
     if (confirmed != true) return;
     final rowNumber = (_gurus[index]['_rowNumber'] as num).toInt();
     if (await _sheetsService.deleteGuru(rowNumber)) {

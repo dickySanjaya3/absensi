@@ -41,16 +41,18 @@ class _GuruDashboardState extends State<GuruDashboard> {
       return;
     }
 
+    // State untuk kendali
     bool isProcessing = false;
     String? lastCode;
     DateTime? lastDetectAt;
+    bool overlayVisible = false;
 
     // Overlay state
     String? overlayNama;
     bool overlaySukses = true;
 
-    // Controller akan dibuat ulang setiap kali scan selesai
-    MobileScannerController controller = MobileScannerController();
+    // Controller
+    final controller = MobileScannerController();
 
     showModalBottomSheet(
       context: context,
@@ -62,24 +64,20 @@ class _GuruDashboardState extends State<GuruDashboard> {
             setModalState(() {
               overlayNama = nama;
               overlaySukses = sukses;
+              overlayVisible = true;
             });
             Future.delayed(const Duration(milliseconds: 900), () {
               if (context.mounted) {
-                setModalState(() => overlayNama = null);
+                setModalState(() {
+                  overlayNama = null;
+                  overlayVisible = false;
+                });
               }
             });
           }
 
-          void resetScanner() {
-            // Dispose controller lama dan buat baru
-            controller.dispose();
-            controller = MobileScannerController();
-            // Paksa setModalState untuk rebuild MobileScanner dengan controller baru
-            setModalState(() {});
-          }
-
           return SizedBox(
-            height: MediaQuery.of(context).size.height * 0.7,
+            height: MediaQuery.of(context).size.height * 0.75,
             child: Column(
               children: [
                 AppBar(
@@ -99,23 +97,21 @@ class _GuruDashboardState extends State<GuruDashboard> {
                   ],
                 ),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Text(
-                    'Arahkan kamera ke kartu QR tiap siswa satu per satu. '
-                    'Scanner tetap terbuka sampai kamu tekan "Selesai".',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                    'Arahkan QR ke dalam bingkai untuk scan otomatis',
+                    style: TextStyle(fontSize: 13, color: Colors.black54),
                   ),
                 ),
                 Expanded(
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
+                      // ----- KAMERA -----
                       MobileScanner(
-                        key: ValueKey(controller), // force rebuild when controller changes
                         controller: controller,
                         onDetect: (capture) async {
-                          // Cegah proses bersamaan
-                          if (isProcessing || overlayNama != null) return;
+                          if (isProcessing || overlayVisible) return;
 
                           final barcodes = capture.barcodes;
                           if (barcodes.isEmpty) return;
@@ -134,25 +130,36 @@ class _GuruDashboardState extends State<GuruDashboard> {
                           lastDetectAt = now;
                           isProcessing = true;
 
-                          // Proses absensi
                           try {
                             await _processAttendance(rawCode, showOverlay);
                           } catch (e) {
-                            debugPrint('Error: $e');
+                            debugPrint('Error proses absensi: $e');
                           }
 
-                          // Tunggu sampai popup hilang (900ms) + ekstra
-                          await Future.delayed(const Duration(milliseconds: 1000));
-
-                          // Reset scanner dengan membuat controller baru
-                          resetScanner();
-
-                          // Reset status untuk scan berikutnya
+                          await Future.delayed(const Duration(milliseconds: 500));
                           isProcessing = false;
-                          lastCode = null;
-                          lastDetectAt = null;
                         },
                       ),
+
+                      // ----- OVERLAY GRID / BINGKAI SCANNER -----
+                      IgnorePointer(
+                        child: Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          color: Colors.transparent,
+                          child: CustomPaint(
+                            painter: ScannerOverlayPainter(
+                              scanAreaSize: 220,
+                              strokeWidth: 4,
+                              cornerLength: 28,
+                              borderColor: Colors.greenAccent,
+                              label: 'Arahkan QR ke sini',
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ----- OVERLAY FEEDBACK (centang/silang) -----
                       if (overlayNama != null)
                         Container(
                           color: Colors.black.withValues(alpha: 0.55),
@@ -462,7 +469,109 @@ class _GuruDashboardState extends State<GuruDashboard> {
   }
 }
 
-// ======================== TAB BERANDA (sama seperti sebelumnya) ========================
+// ==================== SCANNER OVERLAY PAINTER ====================
+
+class ScannerOverlayPainter extends CustomPainter {
+  final double scanAreaSize;
+  final double strokeWidth;
+  final double cornerLength;
+  final Color borderColor;
+  final String label;
+
+  ScannerOverlayPainter({
+    this.scanAreaSize = 220,
+    this.strokeWidth = 4,
+    this.cornerLength = 28,
+    this.borderColor = Colors.greenAccent,
+    this.label = 'Arahkan QR ke sini',
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = borderColor
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    // Hitung posisi kotak scan di tengah
+    final left = (size.width - scanAreaSize) / 2;
+    final top = (size.height - scanAreaSize) / 2;
+    final right = left + scanAreaSize;
+    final bottom = top + scanAreaSize;
+
+    // Buat gelap di luar area scan (dimming)
+    final dimPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.5)
+      ..style = PaintingStyle.fill;
+
+    // Dimming: atas
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, top), dimPaint);
+    // Dimming: bawah
+    canvas.drawRect(
+      Rect.fromLTWH(0, bottom, size.width, size.height - bottom),
+      dimPaint,
+    );
+    // Dimming: kiri
+    canvas.drawRect(Rect.fromLTWH(0, top, left, scanAreaSize), dimPaint);
+    // Dimming: kanan
+    canvas.drawRect(
+      Rect.fromLTWH(right, top, size.width - right, scanAreaSize),
+      dimPaint,
+    );
+
+    // --- Gambar sudut-sudut ---
+
+    // Kiri Atas
+    canvas.drawLine(Offset(left, top + cornerLength), Offset(left, top), paint);
+    canvas.drawLine(Offset(left, top), Offset(left + cornerLength, top), paint);
+
+    // Kanan Atas
+    canvas.drawLine(
+      Offset(right - cornerLength, top),
+      Offset(right, top),
+      paint,
+    );
+    canvas.drawLine(Offset(right, top), Offset(right, top + cornerLength), paint);
+
+    // Kiri Bawah
+    canvas.drawLine(
+      Offset(left, bottom - cornerLength),
+      Offset(left, bottom),
+      paint,
+    );
+    canvas.drawLine(Offset(left, bottom), Offset(left + cornerLength, bottom), paint);
+
+    // Kanan Bawah
+    canvas.drawLine(
+      Offset(right - cornerLength, bottom),
+      Offset(right, bottom),
+      paint,
+    );
+    canvas.drawLine(Offset(right, bottom), Offset(right, bottom - cornerLength), paint);
+
+    // --- Teks di bawah kotak scan ---
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Colors.white70,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    final textX = (size.width - textPainter.width) / 2;
+    final textY = bottom + 24;
+    textPainter.paint(canvas, Offset(textX, textY));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ======================== TAB BERANDA ========================
 
 class _BerandaTab extends StatefulWidget {
   final String kelas;

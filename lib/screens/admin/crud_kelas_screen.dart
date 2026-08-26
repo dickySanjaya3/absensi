@@ -58,6 +58,8 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
   }
 
   Future<void> _tambahKelas() async {
+    // 🔧 BUAT FOCUS NODE SENDIRI
+    final focusNode = FocusNode();
     final ctrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isSaving = false;
@@ -65,66 +67,96 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
     final namaKelas = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Tambah Kelas'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: ctrl,
-              enabled: !isSaving,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Nama Kelas',
-                hintText: 'Contoh: 1A, 2B, 6C',
+      builder: (ctx) {
+        // 🔧 FOCUS DITANGANI DI SINI
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (focusNode.canRequestFocus) {
+            focusNode.requestFocus();
+          }
+        });
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Tambah Kelas'),
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: ctrl,
+                focusNode: focusNode, // 🔧 PAKAI FOCUS NODE SENDIRI
+                enabled: !isSaving,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Kelas',
+                  hintText: 'Contoh: 1A, 2B, 6C',
+                ),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
               ),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
             ),
+            actions: [
+              TextButton(
+                onPressed: isSaving
+                    ? null
+                    : () {
+                        // 🔧 UNFOCUS DAN DISPOSE FOCUS NODE
+                        focusNode.unfocus();
+                        focusNode.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback AGAR POP SETELAH UNFOCUS
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
+                        });
+                      },
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        // 🔧 UNFOCUS DULU
+                        focusNode.unfocus();
+                        // 🔧 TUNGGU SEBENTAR
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        if (!ctx.mounted) return;
+                        setDialogState(() => isSaving = true);
+                        final error = await _sheetsService.addClass(
+                          ctrl.text.trim(),
+                        );
+                        if (!ctx.mounted) return;
+                        if (error == null) {
+                          focusNode.dispose();
+                          // 🔧 GUNAKAN addPostFrameCallback
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx, ctrl.text.trim());
+                            }
+                          });
+                        } else {
+                          setDialogState(() => isSaving = false);
+                          ScaffoldMessenger.of(
+                            ctx,
+                          ).showSnackBar(SnackBar(content: Text(error)));
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Simpan'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: isSaving
-                  ? null
-                  : () {
-                      FocusScope.of(ctx).unfocus();
-                      Navigator.pop(ctx);
-                    },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      FocusScope.of(ctx).unfocus();
-                      setDialogState(() => isSaving = true);
-                      final error = await _sheetsService.addClass(
-                        ctrl.text.trim(),
-                      );
-                      if (!ctx.mounted) return;
-                      if (error == null) {
-                        Navigator.pop(ctx, ctrl.text.trim());
-                      } else {
-                        setDialogState(() => isSaving = false);
-                        ScaffoldMessenger.of(
-                          ctx,
-                        ).showSnackBar(SnackBar(content: Text(error)));
-                      }
-                    },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
+
+    // 🔧 DISPOSE CONTROLLER
     ctrl.dispose();
+    // 🔧 PASTIKAN FOCUS NODE DI-DISPOSE
+    focusNode.dispose();
 
     if (namaKelas != null) {
       await _loadClasses();
@@ -137,6 +169,9 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
   }
 
   Future<void> _hapusKelas(String namaKelas) async {
+    // 🔧 BUAT FOCUS NODE UNTUK DIALOG HAPUS
+    final focusNode = FocusNode();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -147,16 +182,30 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              });
+            },
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              });
+            },
             child: const Text('Hapus'),
           ),
         ],
       ),
     );
+    focusNode.dispose();
+
     if (confirmed != true) return;
 
     final ok = await _sheetsService.deleteClass(namaKelas);

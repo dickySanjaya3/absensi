@@ -33,8 +33,6 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     if (!mounted) return;
     setState(() {
       _classes = classes;
-      // Kalau dibuka dari layar Kelola Kelas untuk kelas tertentu, pakai itu
-      // (asal kelasnya memang masih ada); kalau tidak, kelas pertama seperti biasa.
       _selectedKelas = widget.initialKelas != null &&
               classes.contains(widget.initialKelas)
           ? widget.initialKelas
@@ -59,6 +57,12 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     Map<String, dynamic>? student,
     int? index,
   }) async {
+    // 🔧 BUAT FOCUS NODE UNTUK SETIAP FIELD
+    final idFocus = FocusNode();
+    final namaFocus = FocusNode();
+    final nisFocus = FocusNode();
+    final barcodeFocus = FocusNode();
+
     final idCtrl = TextEditingController(
       text: student?['ID']?.toString() ?? '',
     );
@@ -80,127 +84,176 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     }
     final formKey = GlobalKey<FormState>();
     bool isSaving = false;
+
     final saved = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(student == null ? 'Tambah Siswa' : 'Edit Siswa'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: idCtrl,
-                    enabled: !isSaving,
-                    decoration: const InputDecoration(labelText: 'ID Siswa'),
-                    validator: _required,
-                  ),
-                  TextFormField(
-                    controller: namaCtrl,
-                    enabled: !isSaving,
-                    decoration: const InputDecoration(labelText: 'Nama Siswa'),
-                    validator: _required,
-                  ),
-                  TextFormField(
-                    controller: nisCtrl,
-                    enabled: !isSaving,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'NIS'),
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: jenisKelaminCtrl.text.isEmpty
-                        ? null
-                        : jenisKelaminCtrl.text,
-                    decoration: const InputDecoration(
-                      labelText: 'Jenis Kelamin',
+      builder: (ctx) {
+        // 🔧 FOCUS OTOMATIS KE ID
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (idFocus.canRequestFocus) {
+            idFocus.requestFocus();
+          }
+        });
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(student == null ? 'Tambah Siswa' : 'Edit Siswa'),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: idCtrl,
+                      focusNode: idFocus,
+                      enabled: !isSaving,
+                      decoration: const InputDecoration(labelText: 'ID Siswa'),
+                      validator: _required,
+                      onFieldSubmitted: (_) {
+                        namaFocus.requestFocus();
+                      },
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'L', child: Text('L')),
-                      DropdownMenuItem(value: 'P', child: Text('P')),
-                    ],
-                    onChanged: isSaving
-                        ? null
-                        : (value) => jenisKelaminCtrl.text = value ?? '',
-                  ),
-                  TextFormField(
-                    controller: barcodeCtrl,
-                    enabled: !isSaving && student == null,
-                    decoration: const InputDecoration(labelText: 'Barcode'),
-                  ),
-                ],
+                    TextFormField(
+                      controller: namaCtrl,
+                      focusNode: namaFocus,
+                      enabled: !isSaving,
+                      decoration: const InputDecoration(labelText: 'Nama Siswa'),
+                      validator: _required,
+                      onFieldSubmitted: (_) {
+                        nisFocus.requestFocus();
+                      },
+                    ),
+                    TextFormField(
+                      controller: nisCtrl,
+                      focusNode: nisFocus,
+                      enabled: !isSaving,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'NIS'),
+                      onFieldSubmitted: (_) {
+                        barcodeFocus.requestFocus();
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      initialValue: jenisKelaminCtrl.text.isEmpty
+                          ? null
+                          : jenisKelaminCtrl.text,
+                      decoration: const InputDecoration(
+                        labelText: 'Jenis Kelamin',
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'L', child: Text('L')),
+                        DropdownMenuItem(value: 'P', child: Text('P')),
+                      ],
+                      onChanged: isSaving
+                          ? null
+                          : (value) => jenisKelaminCtrl.text = value ?? '',
+                    ),
+                    TextFormField(
+                      controller: barcodeCtrl,
+                      focusNode: barcodeFocus,
+                      enabled: !isSaving && student == null,
+                      decoration: const InputDecoration(labelText: 'Barcode'),
+                    ),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: isSaving
+                    ? null
+                    : () {
+                        // 🔧 UNFOCUS SEMUA FOCUS NODE
+                        idFocus.unfocus();
+                        namaFocus.unfocus();
+                        nisFocus.unfocus();
+                        barcodeFocus.unfocus();
+                        // 🔧 DISPOSE FOCUS NODE
+                        idFocus.dispose();
+                        namaFocus.dispose();
+                        nisFocus.dispose();
+                        barcodeFocus.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, null);
+                          }
+                        });
+                      },
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        // 🔧 UNFOCUS SEMUA
+                        idFocus.unfocus();
+                        namaFocus.unfocus();
+                        nisFocus.unfocus();
+                        barcodeFocus.unfocus();
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        if (!ctx.mounted) return;
+                        setDialogState(() => isSaving = true);
+                        final result = index == null
+                            ? await _sheetsService.addStudent(
+                                id: idCtrl.text.trim(),
+                                nama: namaCtrl.text.trim(),
+                                kelas: kelas,
+                                nis: nisCtrl.text.trim(),
+                                jenisKelamin: jenisKelaminCtrl.text,
+                                barcode: barcodeCtrl.text.trim(),
+                              )
+                            : await _sheetsService.updateStudent(
+                                kelas: kelas,
+                                rowNumber: (_students[index]['_rowNumber'] as num)
+                                    .toInt(),
+                                id: idCtrl.text.trim(),
+                                nama: namaCtrl.text.trim(),
+                                nis: nisCtrl.text.trim(),
+                                jenisKelamin: jenisKelaminCtrl.text,
+                                barcode: barcodeCtrl.text.trim(),
+                              );
+                        if (!ctx.mounted) return;
+                        // 🔧 DISPOSE FOCUS NODE
+                        idFocus.dispose();
+                        namaFocus.dispose();
+                        nisFocus.dispose();
+                        barcodeFocus.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, result);
+                          }
+                        });
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Simpan'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: isSaving
-                  ? null
-                  : () {
-                      // Tutup dulu keyboard/overlay dropdown yang mungkin masih
-                      // aktif sebelum dialog di-pop, supaya tidak crash
-                      // "_dependents.isEmpty is not true" (race condition
-                      // Flutter kalau ada Focus/overlay yang belum selesai
-                      // dibersihkan saat dialog ditutup).
-                      FocusScope.of(ctx).unfocus();
-                      Navigator.pop(ctx, null);
-                    },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      FocusScope.of(ctx).unfocus();
-                      setDialogState(() => isSaving = true);
-                      final result = index == null
-                          ? await _sheetsService.addStudent(
-                              id: idCtrl.text.trim(),
-                              nama: namaCtrl.text.trim(),
-                              kelas: kelas,
-                              nis: nisCtrl.text.trim(),
-                              jenisKelamin: jenisKelaminCtrl.text,
-                              barcode: barcodeCtrl.text.trim(),
-                            )
-                          : await _sheetsService.updateStudent(
-                              kelas: kelas,
-                              rowNumber: (_students[index]['_rowNumber'] as num)
-                                  .toInt(),
-                              id: idCtrl.text.trim(),
-                              nama: namaCtrl.text.trim(),
-                              nis: nisCtrl.text.trim(),
-                              jenisKelamin: jenisKelaminCtrl.text,
-                              barcode: barcodeCtrl.text.trim(),
-                            );
-                      if (ctx.mounted) Navigator.pop(ctx, result);
-                    },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
+
+    // 🔧 DISPOSE CONTROLLER
     idCtrl.dispose();
     namaCtrl.dispose();
     nisCtrl.dispose();
     jenisKelaminCtrl.dispose();
     barcodeCtrl.dispose();
+
     if (saved == true) {
       await _loadStudents();
       if (mounted) _message('Data siswa tersimpan');
     } else if (saved == false && mounted) {
-      // saved == false artinya proses simpan memang dijalankan tapi gagal.
-      // saved == null artinya dialog ditutup lewat tombol Batal, jadi tidak
-      // perlu tampilkan pesan error apa pun.
       _message('Gagal menyimpan. ID atau NIS mungkin sudah digunakan.');
     }
   }
@@ -209,6 +262,9 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
       value == null || value.trim().isEmpty ? 'Wajib diisi' : null;
 
   Future<void> _deleteStudent(int index) async {
+    // 🔧 BUAT FOCUS NODE
+    final focusNode = FocusNode();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -218,16 +274,30 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              });
+            },
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              });
+            },
             child: const Text('Hapus'),
           ),
         ],
       ),
     );
+    focusNode.dispose();
+
     if (confirmed != true) return;
     final rowNumber = (_students[index]['_rowNumber'] as num).toInt();
     final kelas = _students[index]['kelas']?.toString() ?? _selectedKelas;
