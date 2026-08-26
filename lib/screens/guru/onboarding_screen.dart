@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
@@ -137,15 +138,16 @@ class _OnboardingKelasMapelScreenState
   @override
   Widget build(BuildContext context) {
     final nama = context.watch<AuthService>().currentUser?.nama ?? '';
+    final email = context.watch<AuthService>().currentUser?.email ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  _buildHeader(nama),
+                  _buildHeader(nama, email),
                   Expanded(
                     child: _selectedKelas == null
                         ? _buildKelasStep()
@@ -157,56 +159,79 @@ class _OnboardingKelasMapelScreenState
     );
   }
 
-  Widget _buildHeader(String nama) {
+  Widget _buildHeader(String nama, String email) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 20),
       decoration: const BoxDecoration(
-        color: Colors.indigo,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        color: Color(0xFF005DA7),
       ),
       child: Row(
         children: [
           if (_selectedKelas != null)
             IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
               onPressed: () => setState(() => _selectedKelas = null),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             )
           else
-            IconButton(
-              icon: const CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white24,
-                child: Icon(Icons.logout, color: Colors.white),
+            Container(
+              width: 47,
+              height: 47,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
               ),
-              tooltip: 'Keluar',
-              onPressed: () => _confirmLogout(context),
+              child: IconButton(
+                icon: const Icon(Icons.person, color: Colors.white, size: 24),
+                tooltip: 'Profil',
+                onPressed: () => _confirmLogout(context),
+                padding: EdgeInsets.zero,
+              ),
             ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'HALLO !',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    height: 1.4,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  nama.isNotEmpty ? nama : 'Guru',
-                  style: const TextStyle(
+                  email.isNotEmpty ? email : (nama.isNotEmpty ? nama : 'Guru'),
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+          if (_selectedKelas == null)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                tooltip: 'Keluar',
+                onPressed: () => _confirmLogout(context),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
         ],
       ),
     );
@@ -219,30 +244,43 @@ class _OnboardingKelasMapelScreenState
         .toList();
 
     if (listKelas.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
             'Belum ada kelas yang di-assign untuk akun ini.\nHubungi admin sekolah.',
             textAlign: TextAlign.center,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 16,
+              color: const Color(0xFF414751),
+            ),
           ),
         ),
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.fromLTRB(27, 24, 26, 24),
       children: [
-        const Text(
+        Text(
           'Pilih kelas anda',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF003974).withValues(alpha: 0.95),
+          ),
         ),
-        const SizedBox(height: 4),
-        const Text(
+        const SizedBox(height: 8),
+        Text(
           'Pilih kelas untuk memulai absensi hari ini.',
-          style: TextStyle(color: Colors.black54, fontSize: 13),
+          textAlign: TextAlign.center,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 16,
+            color: const Color(0xFF414751),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         for (var i = 0; i < listKelas.length; i++) ...[
           _KelasCard(
             nama: listKelas[i],
@@ -251,7 +289,7 @@ class _OnboardingKelasMapelScreenState
             warna: _kelasIcons[i % _kelasIcons.length].$2,
             onTap: () => setState(() => _selectedKelas = listKelas[i]),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 24),
         ],
       ],
     );
@@ -329,79 +367,148 @@ class _KelasCard extends StatelessWidget {
     required this.onTap,
   });
 
+  String _getMapelName() {
+    // Extract subject name from kelas if available
+    // Default fallback based on kelas name
+    if (nama.toUpperCase().contains('IPA')) {
+      return 'Ilmu Pengetahuan Alam';
+    } else if (nama.toUpperCase().contains('IPS')) {
+      return 'Ilmu Pengetahuan Sosial';
+    }
+    return 'Mata Pelajaran';
+  }
+
+  Color _getActionColor() {
+    // Different colors based on card color for variety
+    if (warna == const Color(0xFF6C63FF)) {
+      return const Color(0xFF005DA7); // Blue for first card
+    } else if (warna == const Color(0xFF00B8A9)) {
+      return const Color(0xFF00685B); // Teal for second card
+    } else if (warna == const Color(0xFFF6A609)) {
+      return const Color(0xFF735C00); // Yellow-brown for third card
+    }
+    return const Color(0xFF005DA7); // Default blue
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+    final actionColor = _getActionColor();
+    final mapelName = _getMapelName();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 2.5,
+            offset: const Offset(0, 5),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: warna.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+          BoxShadow(
+            color: const Color(0xFF005DA7).withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with icon and student count
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: warna.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, color: warna, size: 22),
                     ),
-                    child: Icon(icon, color: warna),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F2F6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$jumlahSiswa Siswa',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE6F0EF),
+                        borderRadius: BorderRadius.circular(9999),
+                      ),
+                      child: Text(
+                        '$jumlahSiswa Siswa',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 16,
+                          color: const Color(0xFF414751),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                nama,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Masuk Kelas',
-                    style: TextStyle(
-                      color: Colors.indigo,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
+                const SizedBox(height: 16),
+                
+                // Class name
+                Text(
+                  nama,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 16,
+                    color: const Color(0xFF151D1D),
                   ),
-                  const Icon(Icons.arrow_forward, color: Colors.indigo, size: 18),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 4),
+                
+                // Subject name
+                Text(
+                  mapelName,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 16,
+                    color: const Color(0xFF414751),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Divider
+                Container(
+                  height: 2,
+                  color: const Color(0xFFDBE4E4).withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 18),
+                
+                // Action row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Masuk Kelas',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 16,
+                        color: actionColor,
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward,
+                      color: actionColor,
+                      size: 17,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

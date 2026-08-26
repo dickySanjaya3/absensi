@@ -33,6 +33,9 @@ dependencies:
   # Simpan sesi login supaya tidak logout tiap app ditutup
   shared_preferences: ^2.3.3
 
+  # Google Fonts untuk splash screen
+  google_fonts: ^6.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

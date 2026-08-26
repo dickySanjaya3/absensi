@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/qr_service.dart';
 import '../../services/sheets_services.dart';
-import '../role_router.dart';
-import 'onboarding_screen.dart';
 import 'review_absensi_screen.dart';
 import 'riwayat_screen.dart';
 
@@ -27,34 +26,6 @@ class _GuruDashboardState extends State<GuruDashboard> {
 
   final Map<String, String> _scanResults = {};
   List<Map<String, dynamic>> _studentsCache = [];
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    // sama seperti sebelumnya
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari akun?'),
-        content: const Text('Kamu perlu login lagi untuk masuk ke aplikasi.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Keluar'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
-      context.read<AuthService>().signOut();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const RoleRouter()),
-        (route) => false,
-      );
-    }
-  }
 
   Future<void> _openCameraScanner() async {
     // Refresh data siswa
@@ -288,74 +259,204 @@ class _GuruDashboardState extends State<GuruDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final nama = context.watch<AuthService>().currentUser?.nama ?? '';
+    
     final pages = [
       _BerandaTab(
         key: ValueKey('${widget.kelas}-${widget.mapel}-$_currentIndex'),
         kelas: widget.kelas,
         mapel: widget.mapel,
         onLihatSemua: () => setState(() => _currentIndex = 2),
+        scanResults: _scanResults,
       ),
       const SizedBox.shrink(),
       RiwayatScreen(kelas: widget.kelas, mapel: widget.mapel),
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: Text('${widget.kelas} - ${widget.mapel}'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Ganti Kelas/Mapel',
-          onPressed: () => Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const OnboardingKelasMapelScreen(),
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: AppBar(
+          backgroundColor: const Color(0xFF005DA7),
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          flexibleSpace: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      nama.isNotEmpty ? nama : 'Guru',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Keluar',
-            onPressed: () => _confirmLogout(context),
-          ),
-        ],
       ),
       body: pages[_currentIndex],
       floatingActionButton: _scanResults.isEmpty
           ? null
           : FloatingActionButton.extended(
               onPressed: _bukaTinjauAbsensi,
+              backgroundColor: const Color(0xFF005DA7),
               icon: const Icon(Icons.fact_check_rounded),
-              label: Text('Tinjau (${_scanResults.length})'),
-            ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const OnboardingKelasMapelScreen(),
+              label: Text(
+                'Tinjau (${_scanResults.length})',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            );
-          } else if (index == 1) {
-            _openCameraScanner();
-          } else {
-            setState(() => _currentIndex = index);
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(
-            icon: CircleAvatar(
-              radius: 24,
-              child: Icon(Icons.qr_code_scanner, color: Colors.white),
             ),
-            label: 'Scan QR',
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Beranda Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentIndex != 0) {
+                        setState(() => _currentIndex = 0);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _currentIndex == 0
+                            ? const Color(0xFF005DA7)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.home,
+                            color: _currentIndex == 0
+                                ? Colors.white
+                                : const Color(0xFF9CA3AF),
+                            size: 22,
+                          ),
+                          if (_currentIndex == 0) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              'Beranda',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // QR Scanner Button
+                GestureDetector(
+                  onTap: _openCameraScanner,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF005DA7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // Riwayat Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentIndex != 2) {
+                        setState(() => _currentIndex = 2);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _currentIndex == 2
+                            ? const Color(0xFF005DA7)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.history,
+                            color: _currentIndex == 2
+                                ? Colors.white
+                                : const Color(0xFF9CA3AF),
+                            size: 22,
+                          ),
+                          if (_currentIndex == 2) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              'Riwayat',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Riwayat'),
-        ],
+        ),
       ),
     );
   }
@@ -367,12 +468,14 @@ class _BerandaTab extends StatefulWidget {
   final String kelas;
   final String mapel;
   final VoidCallback onLihatSemua;
+  final Map<String, String> scanResults;
 
   const _BerandaTab({
     super.key,
     required this.kelas,
     required this.mapel,
     required this.onLihatSemua,
+    required this.scanResults,
   });
 
   @override
@@ -446,104 +549,239 @@ class _BerandaTabState extends State<_BerandaTab> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final tanggalStr =
-        '${now.day} ${_namaBulan[now.month - 1]} ${now.year}';
+    final tanggalStr = '${now.day} ${_namaBulan[now.month - 1].substring(0, 3)} ${now.year}';
+
+    // Count stats
+    int totalHadir = 0, totalIzin = 0, totalSakit = 0, totalAlpa = 0;
+    for (final item in _kehadiranHariIni) {
+      final status = (item['status'] ?? '').toString();
+      switch (status) {
+        case 'Hadir':
+          totalHadir++;
+          break;
+        case 'Izin':
+          totalIzin++;
+          break;
+        case 'Sakit':
+          totalSakit++;
+          break;
+        case 'Alpa':
+          totalAlpa++;
+          break;
+      }
+    }
+    final totalSiswa = totalHadir + totalIzin + totalSakit + totalAlpa;
 
     return RefreshIndicator(
       onRefresh: _load,
+      color: const Color(0xFF005DA7),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
+          // Card Info Kelas
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.indigo,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0073CC), Color(0xFF005DA7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'KELAS SAAT INI',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        widget.kelas,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        widget.mapel,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                Text(
+                  'KELAS SAAT INI',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 8),
+                Text(
+                  widget.kelas,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    height: 1.1,
                   ),
-                  child: const Icon(Icons.dashboard_rounded, color: Colors.white),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.mapel,
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          
+          // Total Siswa
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total Siswa',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                Text(
+                  '$totalSiswa',
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF005DA7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Stats Grid (4 boxes)
+          Row(
+            children: [
+              Expanded(
+                child: _StatBox(
+                  label: 'HADIR',
+                  value: totalHadir,
+                  color: const Color(0xFF1FA97A),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatBox(
+                  label: 'IZIN',
+                  value: totalIzin,
+                  color: const Color(0xFF2F6FED),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatBox(
+                  label: 'SAKIT',
+                  value: totalSakit,
+                  color: const Color(0xFFE7A008),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatBox(
+                  label: 'ALPA',
+                  value: totalAlpa,
+                  color: const Color(0xFFE0587A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Section Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Daftar Kehadiran',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1F2937),
+                    ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     'Hari ini, $tanggalStr',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF9CA3AF),
+                    ),
                   ),
                 ],
               ),
               TextButton(
                 onPressed: widget.onLihatSemua,
-                child: const Text('Lihat Semua'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF005DA7),
+                ),
+                child: Text(
+                  'Lihat Semua',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          
+          // List Kehadiran
           if (_loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 40),
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_kehadiranHariIni.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Text(
-                  'Belum ada siswa yang diabsen hari ini.\nTekan tombol scan untuk mulai.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54),
-                ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF005DA7).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner,
+                      size: 48,
+                      color: Color(0xFF005DA7),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada siswa yang diabsen',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tekan tombol scan QR untuk\nmemulai absensi hari ini.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: const Color(0xFF6B7280),
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
             )
           else
@@ -552,69 +790,174 @@ class _BerandaTabState extends State<_BerandaTab> {
               final nis = item['nis']?.toString();
               final status = (item['status'] ?? '-').toString();
               final inisial = nama.isNotEmpty ? nama[0].toUpperCase() : '?';
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.indigo.withValues(alpha: 0.1),
-                      child: Text(
-                        inisial,
-                        style: const TextStyle(
-                          color: Colors.indigo,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nama,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          if (nis != null && nis.isNotEmpty)
-                            Text(
-                              'NIS: $nis',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _statusColor(status).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor(status),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              
+              return _AttendanceListItem(
+                inisial: inisial,
+                nama: nama,
+                nis: nis,
+                status: status,
+                statusColor: _statusColor(status),
               );
             }),
+        ],
+      ),
+    );
+  }
+}
+
+
+// Stat Box Widget
+class _StatBox extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: const Color(0xFF9CA3AF),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$value',
+            style: GoogleFonts.poppins(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Attendance List Item Widget
+class _AttendanceListItem extends StatelessWidget {
+  final String inisial;
+  final String nama;
+  final String? nis;
+  final String status;
+  final Color statusColor;
+
+  const _AttendanceListItem({
+    required this.inisial,
+    required this.nama,
+    this.nis,
+    required this.status,
+    required this.statusColor,
+  });
+
+  IconData _getStatusIcon() {
+    switch (status) {
+      case 'Hadir':
+        return Icons.check_circle;
+      case 'Izin':
+      case 'Sakit':
+        return Icons.cancel;
+      case 'Alpa':
+        return Icons.radio_button_unchecked;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    inisial,
+                    style: GoogleFonts.poppins(
+                      color: statusColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Icon(
+                    _getStatusIcon(),
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nama,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1F2937),
+                  ),
+                ),
+                if (nis != null && nis!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    nis!,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

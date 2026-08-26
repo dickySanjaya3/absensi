@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'services/auth_service.dart';
+import 'screens/splash_screen.dart';
 import 'screens/role_router.dart';
 
 void main() {
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
           useMaterial3: true,
         ),
-        home: const RoleRouter(),
+        home: const SplashScreen(nextScreen: RoleRouter()),
       ),
     );
   }
