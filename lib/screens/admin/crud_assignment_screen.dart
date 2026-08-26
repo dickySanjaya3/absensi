@@ -30,6 +30,11 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
   }
 
   Future<void> _form({Map<String, dynamic>? assignment, int? index}) async {
+    // 🔧 BUAT FOCUS NODE UNTUK SETIAP FIELD
+    final emailFocus = FocusNode();
+    final kelasFocus = FocusNode();
+    final mapelFocus = FocusNode();
+
     final email = TextEditingController(
       text: assignment?['Email Guru']?.toString() ?? '',
     );
@@ -41,94 +46,142 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
     );
     final key = GlobalKey<FormState>();
     bool isSaving = false;
+
     final saved = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(
-            assignment == null ? 'Tambah Assignment' : 'Edit Assignment',
-          ),
-          content: Form(
-            key: key,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: email,
-                  enabled: !isSaving,
-                  decoration: const InputDecoration(labelText: 'Email Guru'),
-                  validator: _required,
-                ),
-                TextFormField(
-                  controller: kelas,
-                  enabled: !isSaving,
-                  decoration: const InputDecoration(labelText: 'Kelas'),
-                  validator: _required,
-                ),
-                TextFormField(
-                  controller: mapel,
-                  enabled: !isSaving,
-                  decoration: const InputDecoration(
-                    labelText: 'Mata Pelajaran',
+      builder: (ctx) {
+        // 🔧 FOCUS OTOMATIS KE EMAIL
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (emailFocus.canRequestFocus) {
+            emailFocus.requestFocus();
+          }
+        });
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(
+              assignment == null ? 'Tambah Assignment' : 'Edit Assignment',
+            ),
+            content: Form(
+              key: key,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: email,
+                    focusNode: emailFocus,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(labelText: 'Email Guru'),
+                    validator: _required,
+                    onFieldSubmitted: (_) {
+                      kelasFocus.requestFocus();
+                    },
                   ),
-                  validator: _required,
-                ),
-              ],
+                  TextFormField(
+                    controller: kelas,
+                    focusNode: kelasFocus,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(labelText: 'Kelas'),
+                    validator: _required,
+                    onFieldSubmitted: (_) {
+                      mapelFocus.requestFocus();
+                    },
+                  ),
+                  TextFormField(
+                    controller: mapel,
+                    focusNode: mapelFocus,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(
+                      labelText: 'Mata Pelajaran',
+                    ),
+                    validator: _required,
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: isSaving
+                    ? null
+                    : () {
+                        // 🔧 UNFOCUS SEMUA FOCUS NODE
+                        emailFocus.unfocus();
+                        kelasFocus.unfocus();
+                        mapelFocus.unfocus();
+                        // 🔧 DISPOSE FOCUS NODE
+                        emailFocus.dispose();
+                        kelasFocus.dispose();
+                        mapelFocus.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, null);
+                          }
+                        });
+                      },
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        if (!key.currentState!.validate()) return;
+                        // 🔧 UNFOCUS SEMUA
+                        emailFocus.unfocus();
+                        kelasFocus.unfocus();
+                        mapelFocus.unfocus();
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        if (!ctx.mounted) return;
+                        setDialogState(() => isSaving = true);
+                        final result = index == null
+                            ? await _service.addAssignment(
+                                emailGuru: email.text.trim(),
+                                kelas: kelas.text.trim(),
+                                mapel: mapel.text.trim(),
+                              )
+                            : await _service.updateAssignment(
+                                rowNumber: (_items[index]['_rowNumber'] as num)
+                                    .toInt(),
+                                emailGuru: email.text.trim(),
+                                kelas: kelas.text.trim(),
+                                mapel: mapel.text.trim(),
+                              );
+                        if (!ctx.mounted) return;
+                        // 🔧 DISPOSE FOCUS NODE
+                        emailFocus.dispose();
+                        kelasFocus.dispose();
+                        mapelFocus.dispose();
+                        // 🔧 GUNAKAN addPostFrameCallback
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx, result);
+                          }
+                        });
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Simpan'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: isSaving
-                  ? null
-                  : () {
-                      FocusScope.of(ctx).unfocus();
-                      Navigator.pop(ctx, null);
-                    },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      if (!key.currentState!.validate()) return;
-                      FocusScope.of(ctx).unfocus();
-                      setDialogState(() => isSaving = true);
-                      final result = index == null
-                          ? await _service.addAssignment(
-                              emailGuru: email.text.trim(),
-                              kelas: kelas.text.trim(),
-                              mapel: mapel.text.trim(),
-                            )
-                          : await _service.updateAssignment(
-                              rowNumber: (_items[index]['_rowNumber'] as num)
-                                  .toInt(),
-                              emailGuru: email.text.trim(),
-                              kelas: kelas.text.trim(),
-                              mapel: mapel.text.trim(),
-                            );
-                      if (ctx.mounted) Navigator.pop(ctx, result);
-                    },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
+
+    // 🔧 DISPOSE CONTROLLER
     email.dispose();
     kelas.dispose();
     mapel.dispose();
+
     if (saved == true) {
       await _load();
       if (mounted) _message('Assignment tersimpan');
     } else if (saved == false && mounted) {
-      // false = proses simpan gagal; null (Batal) tidak masuk sini.
       _message('Assignment gagal disimpan atau sudah ada');
     }
   }
@@ -137,6 +190,43 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
       value == null || value.trim().isEmpty ? 'Wajib diisi' : null;
 
   Future<void> _delete(int index) async {
+    // 🔧 BUAT FOCUS NODE
+    final focusNode = FocusNode();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus assignment?'),
+        content: Text(
+          'Assignment ${_items[index]['Kelas']} - ${_items[index]['Mata Pelajaran']} akan dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              });
+            },
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              focusNode.unfocus();
+              focusNode.dispose();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              });
+            },
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    focusNode.dispose();
+
+    if (confirmed != true) return;
     final rowNumber = (_items[index]['_rowNumber'] as num).toInt();
     if (await _service.deleteAssignment(rowNumber)) {
       await _load();
