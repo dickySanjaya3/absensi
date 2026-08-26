@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 import 'import_siswa_screen.dart';
 
 class CrudSiswaScreen extends StatefulWidget {
@@ -318,12 +320,11 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.initialKelas != null
-              ? 'Siswa Kelas ${widget.initialKelas}'
-              : 'CRUD Data Siswa',
-        ),
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: CurvedAppBar(
+        title: widget.initialKelas != null
+            ? 'Siswa Kelas ${widget.initialKelas}'
+            : 'Kelola Data Siswa',
         actions: [
           if (_selectedKelas != null)
             PopupMenuButton<String>(
@@ -336,7 +337,9 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                   } else if (n == 0) {
                     _message('Tidak ada data yang perlu diperbaiki.');
                   } else {
-                    _message('$n data diperbaiki. Kolom Jenis Kelamin dikosongkan, silakan isi ulang manual.');
+                    _message(
+                      '$n data diperbaiki. Kolom Jenis Kelamin dikosongkan, silakan isi ulang manual.',
+                    );
                     await _loadStudents();
                   }
                 }
@@ -354,7 +357,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_selectedKelas != null)
-            FloatingActionButton.extended(
+            ModernFAB(
               heroTag: 'import_massal_siswa',
               onPressed: () async {
                 final imported = await Navigator.push<bool>(
@@ -365,41 +368,33 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                 );
                 if (imported == true) await _loadStudents();
               },
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Import Massal'),
+              icon: Icons.upload_file,
+              label: 'Import Massal',
               backgroundColor: Colors.white,
-              foregroundColor: Colors.indigo,
+              foregroundColor: const Color(0xFF087BB9),
             ),
           const SizedBox(height: 10),
-          FloatingActionButton(
+          ModernFAB(
             heroTag: 'tambah_siswa',
             onPressed: () => _showFormDialog(),
-            child: const Icon(Icons.add),
+            icon: Icons.add,
+            label: 'Tambah Siswa',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingOverlay(message: 'Memuat data siswa...')
           : RefreshIndicator(
               onRefresh: _loadClasses,
+              color: const Color(0xFF087BB9),
               child: Column(
                 children: [
+                  // Kelas Selector
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedKelas,
-                      decoration: const InputDecoration(
-                        labelText: 'Pilih Kelas',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _classes
-                          .map(
-                            (kelas) => DropdownMenuItem(
-                              value: kelas,
-                              child: Text(kelas),
-                            ),
-                          )
-                          .toList(),
+                    child: _KelasSelector(
+                      selectedKelas: _selectedKelas,
+                      classes: _classes,
                       onChanged: (kelas) async {
                         setState(() {
                           _selectedKelas = kelas;
@@ -410,58 +405,202 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                       },
                     ),
                   ),
+
+                  // Student List
                   Expanded(
                     child: _selectedKelas == null
-                        ? const Center(child: Text('Belum ada data kelas'))
-                        : _students.isEmpty
                         ? ListView(
+                            padding: const EdgeInsets.all(16),
                             children: const [
-                              SizedBox(height: 160),
-                              Center(
-                                child: Text(
-                                  'Belum ada data siswa di tab Siswa',
-                                ),
+                              SizedBox(height: 60),
+                              EmptyStateWidget(
+                                icon: Icons.class_outlined,
+                                title: 'Belum ada data kelas',
+                                subtitle: 'Silakan tambahkan kelas terlebih dahulu.',
                               ),
                             ],
                           )
-                        : ListView.builder(
-                            itemCount: _students.length,
-                            itemBuilder: (ctx, index) {
-                              final student = _students[index];
-                              return ListTile(
-                                title: Text(student['Nama'].toString()),
-                                subtitle: Text(
-                                  'ID: ${student['ID']} | NIS: ${student['NIS'] ?? '-'} | JK: ${student['Jenis Kelamin']}',
-                                ),
-                                isThreeLine: true,
-                                trailing: Wrap(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit,
-                                        color: Colors.orange,
-                                      ),
-                                      onPressed: () => _showFormDialog(
-                                        student: student,
-                                        index: index,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () => _deleteStudent(index),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                        : _students.isEmpty
+                            ? ListView(
+                                padding: const EdgeInsets.all(16),
+                                children: const [
+                                  SizedBox(height: 60),
+                                  EmptyStateWidget(
+                                    icon: Icons.person_add_outlined,
+                                    title: 'Belum ada data siswa',
+                                    subtitle:
+                                        'Tekan "Tambah Siswa" atau "Import Massal"\nuntuk menambahkan data siswa.',
+                                  ),
+                                ],
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: _students.length,
+                                itemBuilder: (ctx, index) {
+                                  final student = _students[index];
+                                  return _SiswaListItem(
+                                    student: student,
+                                    onEdit: () =>
+                                        _showFormDialog(student: student, index: index),
+                                    onDelete: () => _deleteStudent(index),
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// ==================== KELAS SELECTOR ====================
+class _KelasSelector extends StatelessWidget {
+  final String? selectedKelas;
+  final List<String> classes;
+  final ValueChanged<String?> onChanged;
+
+  const _KelasSelector({
+    required this.selectedKelas,
+    required this.classes,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ModernCard(
+      child: DropdownButtonFormField<String>(
+        value: selectedKelas,
+        decoration: InputDecoration(
+          labelText: 'Pilih Kelas',
+          labelStyle: GoogleFonts.inter(),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        items: classes
+            .map(
+              (kelas) => DropdownMenuItem(
+                value: kelas,
+                child: Text(
+                  kelas,
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+/// ==================== SISWA LIST ITEM ====================
+class _SiswaListItem extends StatelessWidget {
+  final Map<String, dynamic> student;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _SiswaListItem({
+    required this.student,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nama = student['Nama']?.toString() ?? '-';
+    final id = student['ID']?.toString() ?? '-';
+    final nis = student['NIS']?.toString() ?? '-';
+    final jk = student['Jenis Kelamin']?.toString() ?? '-';
+    final initial = nama.isNotEmpty ? nama[0].toUpperCase() : '?';
+
+    final jenisKelaminColor = jk == 'L'
+        ? const Color(0xFF2F6FED)
+        : jk == 'P'
+            ? const Color(0xFFE0587A)
+            : const Color(0xFF64748B);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ModernCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            // Avatar with initial
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1FA97A).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF1FA97A),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nama,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'ID: $id | NIS: $nis',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: jenisKelaminColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          jk,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: jenisKelaminColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Actions
+            EditIconButton(onPressed: onEdit),
+            DeleteIconButton(onPressed: onDelete),
+          ],
+        ),
+      ),
     );
   }
 }

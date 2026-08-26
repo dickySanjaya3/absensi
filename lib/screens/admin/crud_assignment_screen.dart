@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 
 class CrudAssignmentScreen extends StatefulWidget {
   const CrudAssignmentScreen({super.key});
@@ -241,55 +243,119 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kelola Assignment')),
-      floatingActionButton: FloatingActionButton(
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: const CurvedAppBar(title: 'Kelola Assignment'),
+      floatingActionButton: ModernFAB(
         onPressed: () => _form(),
-        child: const Icon(Icons.add),
+        icon: Icons.add,
+        label: 'Tambah Assignment',
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingOverlay(message: 'Memuat data assignment...')
           : RefreshIndicator(
               onRefresh: _load,
+              color: const Color(0xFF087BB9),
               child: _items.isEmpty
                   ? ListView(
+                      padding: const EdgeInsets.all(16),
                       children: const [
-                        SizedBox(height: 160),
-                        Center(child: Text('Belum ada assignment')),
+                        SizedBox(height: 60),
+                        EmptyStateWidget(
+                          icon: Icons.assignment_outlined,
+                          title: 'Belum ada assignment',
+                          subtitle:
+                              'Tekan tombol "Tambah Assignment"\nuntuk menambahkan penugasan baru.',
+                        ),
                       ],
                     )
                   : ListView.builder(
+                      padding: const EdgeInsets.all(16),
                       itemCount: _items.length,
                       itemBuilder: (context, index) {
                         final item = _items[index];
-                        return ListTile(
-                          leading: const Icon(Icons.assignment),
-                          title: Text(
-                            '${item['Kelas']} - ${item['Mata Pelajaran']}',
-                          ),
-                          subtitle: Text(item['Email Guru'].toString()),
-                          trailing: Wrap(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.orange,
-                                ),
-                                onPressed: () =>
-                                    _form(assignment: item, index: index),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _delete(index),
-                              ),
-                            ],
-                          ),
+                        return _AssignmentCard(
+                          assignment: item,
+                          onEdit: () => _form(assignment: item, index: index),
+                          onDelete: () => _delete(index),
                         );
                       },
                     ),
             ),
+    );
+  }
+}
+
+/// ==================== ASSIGNMENT CARD ====================
+class _AssignmentCard extends StatelessWidget {
+  final Map<String, dynamic> assignment;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _AssignmentCard({
+    required this.assignment,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final kelas = assignment['Kelas']?.toString() ?? '-';
+    final mapel = assignment['Mata Pelajaran']?.toString() ?? '-';
+    final email = assignment['Email Guru']?.toString() ?? '-';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ModernCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.assignment_outlined,
+                color: Color(0xFF7C3AED),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$kelas - $mapel',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Actions
+            EditIconButton(onPressed: onEdit),
+            DeleteIconButton(onPressed: onDelete),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -10,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 import '../role_router.dart';
 import 'crud_assignment_screen.dart';
 import 'crud_guru_screen.dart';
@@ -62,180 +64,152 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final adminEmail = context.watch<AuthService>().currentUser?.email ?? '';
+    final adminName = context.watch<AuthService>().currentUser?.nama ?? 'Admin';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text('Dashboard Admin'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Keluar',
-            onPressed: () => _confirmLogout(context),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadStats,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: SafeArea(
+        child: Column(
           children: [
-            const Text(
-              'Menu Manajemen',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Curved Header dengan user info
+            CurvedHeader(
+              greeting: 'HALLO ADMIN!',
+              subtitle: adminEmail.isNotEmpty ? adminEmail : adminName,
+              onLogout: () => _confirmLogout(context),
             ),
-            const SizedBox(height: 12),
-            _ManajemenCard(
-              icon: Icons.person_outline,
-              iconColor: const Color(0xFF2F6FED),
-              title: 'Manajemen Guru',
-              subtitle: 'Tambah, edit, dan hapus data guru.',
-              totalLabel: 'Total Guru',
-              totalValue: _loadingStats ? null : _totalGuru,
-              onKelola: () => _bukaHalaman(const CrudGuruScreen()),
-            ),
-            const SizedBox(height: 12),
-            _ManajemenCard(
-              icon: Icons.people_outline,
-              iconColor: const Color(0xFF1FA97A),
-              title: 'Manajemen Siswa',
-              subtitle: 'Kelola data siswa dan pemetaan kelas.',
-              totalLabel: 'Total Siswa',
-              totalValue: _loadingStats ? null : _totalSiswa,
-              onKelola: () => _bukaHalaman(const CrudSiswaScreen()),
-            ),
-            const SizedBox(height: 12),
-            _ManajemenCard(
-              icon: Icons.school_outlined,
-              iconColor: const Color(0xFFE7A008),
-              title: 'Manajemen Kelas',
-              subtitle: 'Atur kelas dan daftar per kelas.',
-              totalLabel: 'Total Kelas',
-              totalValue: _loadingStats ? null : _totalKelas,
-              onKelola: () => _bukaHalaman(const CrudKelasScreen()),
-            ),
-            const SizedBox(height: 12),
-            _ManajemenCard(
-              icon: Icons.assignment_outlined,
-              iconColor: const Color(0xFF7C3AED),
-              title: 'Kelola Assignment',
-              subtitle: 'Atur penugasan guru ke kelas & mapel.',
-              totalLabel: null,
-              totalValue: null,
-              onKelola: () => _bukaHalaman(const CrudAssignmentScreen()),
-            ),
-            const SizedBox(height: 12),
-            _ManajemenCard(
-              icon: Icons.qr_code_2_rounded,
-              iconColor: const Color(0xFFE0587A),
-              title: 'Kartu ID / Barcode',
-              subtitle: 'Generate & cetak kartu QR siswa.',
-              totalLabel: null,
-              totalValue: null,
-              onKelola: () => _bukaHalaman(const GenerateQRScreen()),
+            
+            // Content
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadStats,
+                color: const Color(0xFF087BB9),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Stats Section
+                    Text(
+                      'Statistik',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatBox(
+                            label: 'GURU',
+                            value: _totalGuru,
+                            color: const Color(0xFF2F6FED),
+                            icon: Icons.person_outline,
+                            loading: _loadingStats,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: StatBox(
+                            label: 'SISWA',
+                            value: _totalSiswa,
+                            color: const Color(0xFF1FA97A),
+                            icon: Icons.people_outline,
+                            loading: _loadingStats,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatBox(
+                            label: 'KELAS',
+                            value: _totalKelas,
+                            color: const Color(0xFFE7A008),
+                            icon: Icons.school_outlined,
+                            loading: _loadingStats,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: StatBox(
+                            label: 'ASSIGNMENT',
+                            value: 0,
+                            color: const Color(0xFF7C3AED),
+                            icon: Icons.assignment_outlined,
+                            loading: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Menu Section
+                    Text(
+                      'Menu Manajemen',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Menu Cards
+                    MenuCard(
+                      icon: Icons.person_outline,
+                      iconColor: const Color(0xFF2F6FED),
+                      title: 'Manajemen Guru',
+                      subtitle: 'Tambah, edit, dan hapus data guru.',
+                      badge: _loadingStats ? '...' : '${_totalGuru ?? 0} Guru',
+                      onTap: () => _bukaHalaman(const CrudGuruScreen()),
+                    ),
+                    const SizedBox(height: 16),
+
+                    MenuCard(
+                      icon: Icons.people_outline,
+                      iconColor: const Color(0xFF1FA97A),
+                      title: 'Manajemen Siswa',
+                      subtitle: 'Kelola data siswa dan pemetaan kelas.',
+                      badge: _loadingStats ? '...' : '${_totalSiswa ?? 0} Siswa',
+                      onTap: () => _bukaHalaman(const CrudSiswaScreen()),
+                    ),
+                    const SizedBox(height: 16),
+
+                    MenuCard(
+                      icon: Icons.school_outlined,
+                      iconColor: const Color(0xFFE7A008),
+                      title: 'Manajemen Kelas',
+                      subtitle: 'Atur kelas dan daftar per kelas.',
+                      badge: _loadingStats ? '...' : '${_totalKelas ?? 0} Kelas',
+                      onTap: () => _bukaHalaman(const CrudKelasScreen()),
+                    ),
+                    const SizedBox(height: 16),
+
+                    MenuCard(
+                      icon: Icons.assignment_outlined,
+                      iconColor: const Color(0xFF7C3AED),
+                      title: 'Kelola Assignment',
+                      subtitle: 'Atur penugasan guru ke kelas & mapel.',
+                      onTap: () => _bukaHalaman(const CrudAssignmentScreen()),
+                    ),
+                    const SizedBox(height: 16),
+
+                    MenuCard(
+                      icon: Icons.qr_code_2_rounded,
+                      iconColor: const Color(0xFFE0587A),
+                      title: 'Kartu ID / Barcode',
+                      subtitle: 'Generate & cetak kartu QR siswa.',
+                      onTap: () => _bukaHalaman(const GenerateQRScreen()),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ManajemenCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final String? totalLabel;
-  final int? totalValue;
-  final VoidCallback onKelola;
-
-  const _ManajemenCard({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.totalLabel,
-    required this.totalValue,
-    required this.onKelola,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor),
-              ),
-              const Spacer(),
-              if (totalLabel != null)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      totalLabel!,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    totalValue == null
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            totalValue.toString(),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ],
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: onKelola,
-              icon: const Icon(Icons.settings_outlined, size: 18),
-              label: const Text('Kelola'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -417,36 +391,100 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kartu ID / Barcode Siswa')),
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: const CurvedAppBar(
+        title: 'Kartu ID / Barcode Siswa',
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Ketik nama atau NIS siswa',
-                suffixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                labelStyle: GoogleFonts.inter(),
+                suffixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.white,
               ),
               onChanged: _searchDatabase,
             ),
             const SizedBox(height: 12),
             Expanded(
               child: selectedSiswa == null
-                  ? ListView.builder(
-                      itemCount: searchResults.length,
-                      itemBuilder: (context, index) {
-                        final siswa = searchResults[index];
-                        return ListTile(
-                          title: Text(siswa['Nama'].toString()),
-                          subtitle: Text(
-                            'Kelas: ${siswa['kelas']} | NIS: ${siswa['NIS'] ?? '-'}',
-                          ),
-                          onTap: () => setState(() => selectedSiswa = siswa),
-                        );
-                      },
-                    )
+                  ? searchResults.isEmpty && _searchController.text.isNotEmpty
+                      ? EmptyStateWidget(
+                          icon: Icons.search_off,
+                          title: 'Tidak ditemukan',
+                          subtitle:
+                              'Coba cari dengan nama atau NIS yang berbeda',
+                        )
+                      : ListView.builder(
+                          itemCount: searchResults.length,
+                          itemBuilder: (context, index) {
+                            final siswa = searchResults[index];
+                            return ModernCard(
+                              padding: const EdgeInsets.all(12),
+                              onTap: () =>
+                                  setState(() => selectedSiswa = siswa),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF087BB9)
+                                          .withValues(alpha: 0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        siswa['Nama']
+                                            .toString()[0]
+                                            .toUpperCase(),
+                                        style: GoogleFonts.poppins(
+                                          color: const Color(0xFF087BB9),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          siswa['Nama'].toString(),
+                                          style: GoogleFonts.inter(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Kelas: ${siswa['kelas']} | NIS: ${siswa['NIS'] ?? '-'}',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        )
                   : SingleChildScrollView(
                       child: Column(
                         children: [
@@ -454,7 +492,10 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                             onPressed: () =>
                                 setState(() => selectedSiswa = null),
                             icon: const Icon(Icons.arrow_back, size: 18),
-                            label: const Text('Kembali ke pencarian'),
+                            label: Text(
+                              'Kembali ke pencarian',
+                              style: GoogleFonts.inter(),
+                            ),
                           ),
                           const SizedBox(height: 8),
 
@@ -467,7 +508,10 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.indigo),
+                                border: Border.all(
+                                  color: const Color(0xFF087BB9),
+                                  width: 2,
+                                ),
                                 boxShadow: const [
                                   BoxShadow(
                                     color: Colors.black26,
@@ -477,21 +521,30 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  const Text(
+                                  Text(
                                     'KARTU ABSENSI SISWA',
-                                    style: TextStyle(
+                                    style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 1,
                                     ),
                                   ),
                                   const SizedBox(height: 12),
                                   _activeQr == null
-                                      ? const SizedBox(
+                                      ? Container(
                                           height: 160,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF087BB9)
+                                                .withValues(alpha: 0.05),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
                                           child: Center(
                                             child: Text(
                                               'Belum ada QR aktif.\nTekan "Generate QR" di bawah.',
                                               textAlign: TextAlign.center,
+                                              style: GoogleFonts.inter(
+                                                color: const Color(0xFF64748B),
+                                              ),
                                             ),
                                           ),
                                         )
@@ -503,17 +556,22 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                                   const SizedBox(height: 12),
                                   Text(
                                     selectedSiswa!['Nama'].toString(),
-                                    style: const TextStyle(
+                                    style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
                                   ),
-                                  Text('Kelas: ${selectedSiswa!['kelas']}'),
+                                  Text(
+                                    'Kelas: ${selectedSiswa!['kelas']}',
+                                    style: GoogleFonts.inter(),
+                                  ),
                                   Text(
                                     'NIS: ${selectedSiswa!['NIS'] ?? '-'}',
+                                    style: GoogleFonts.inter(),
                                   ),
                                   Text(
                                     'Jenis Kelamin: ${selectedSiswa!['Jenis Kelamin']}',
+                                    style: GoogleFonts.inter(),
                                   ),
                                 ],
                               ),
@@ -534,6 +592,13 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                                   _activeQr == null
                                       ? 'Generate QR'
                                       : 'Generate Ulang',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF087BB9),
+                                  foregroundColor: Colors.white,
                                 ),
                               ),
                               OutlinedButton.icon(
@@ -541,18 +606,34 @@ class _GenerateQRScreenState extends State<GenerateQRScreen> {
                                     ? null
                                     : _exportKartu,
                                 icon: const Icon(Icons.ios_share),
-                                label: const Text('Cetak / Bagikan'),
+                                label: Text(
+                                  'Cetak / Bagikan',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF087BB9),
+                                ),
                               ),
                               OutlinedButton.icon(
                                 onPressed: _isBusy ? null : _lihatRiwayat,
                                 icon: const Icon(Icons.history),
-                                label: const Text('Riwayat'),
+                                label: Text(
+                                  'Riwayat',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF087BB9),
+                                ),
                               ),
                             ],
                           ),
                           if (_isBusy) ...[
                             const SizedBox(height: 12),
-                            const CircularProgressIndicator(),
+                            const LoadingOverlay(),
                           ],
                         ],
                       ),

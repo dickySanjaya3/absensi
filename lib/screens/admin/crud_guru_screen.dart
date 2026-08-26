@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 
 class CrudGuruScreen extends StatefulWidget {
   const CrudGuruScreen({super.key});
@@ -266,58 +268,151 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kelola Akun Guru')),
-      floatingActionButton: FloatingActionButton(
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: const CurvedAppBar(title: 'Kelola Akun Guru'),
+      floatingActionButton: ModernFAB(
         onPressed: () => _showFormDialog(),
-        child: const Icon(Icons.add),
+        icon: Icons.add,
+        label: 'Tambah Guru',
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingOverlay(message: 'Memuat data guru...')
           : RefreshIndicator(
               onRefresh: _loadGurus,
+              color: const Color(0xFF087BB9),
               child: _gurus.isEmpty
                   ? ListView(
+                      padding: const EdgeInsets.all(16),
                       children: const [
-                        SizedBox(height: 160),
-                        Center(child: Text('Belum ada akun guru')),
+                        SizedBox(height: 60),
+                        EmptyStateWidget(
+                          icon: Icons.person_add_outlined,
+                          title: 'Belum ada akun guru',
+                          subtitle:
+                              'Tekan tombol "Tambah Guru"\nuntuk menambahkan akun guru baru.',
+                        ),
                       ],
                     )
                   : ListView.builder(
+                      padding: const EdgeInsets.all(16),
                       itemCount: _gurus.length,
                       itemBuilder: (ctx, index) {
                         final guru = _gurus[index];
-                        return ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.person),
-                          ),
-                          title: Text(guru['Nama Guru'].toString()),
-                          subtitle: Text(
-                            '${guru['Email']}\nStatus: ${guru['Status']}',
-                          ),
-                          isThreeLine: true,
-                          trailing: Wrap(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.orange,
-                                ),
-                                onPressed: () =>
-                                    _showFormDialog(guru: guru, index: index),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deleteGuru(index),
-                              ),
-                            ],
-                          ),
+                        return _GuruListItem(
+                          guru: guru,
+                          onEdit: () => _showFormDialog(guru: guru, index: index),
+                          onDelete: () => _deleteGuru(index),
                         );
                       },
                     ),
             ),
+    );
+  }
+}
+
+/// ==================== GURU LIST ITEM ====================
+class _GuruListItem extends StatelessWidget {
+  final Map<String, dynamic> guru;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _GuruListItem({
+    required this.guru,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nama = guru['Nama Guru']?.toString() ?? '-';
+    final email = guru['Email']?.toString() ?? '-';
+    final status = guru['Status']?.toString() ?? '-';
+    final initial = nama.isNotEmpty ? nama[0].toUpperCase() : '?';
+
+    final statusColor = status.toLowerCase() == 'aktif'
+        ? const Color(0xFF1FA97A)
+        : const Color(0xFF64748B);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ModernCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            // Avatar with initial
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2F6FED).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF2F6FED),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nama,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        status,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: statusColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Actions
+            EditIconButton(onPressed: onEdit),
+            DeleteIconButton(onPressed: onDelete),
+          ],
+        ),
+      ),
     );
   }
 }

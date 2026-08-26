@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 import 'crud_siswa_screen.dart';
 import 'import_siswa_screen.dart';
 
@@ -222,11 +224,12 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kelola Kelas'),
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: CurvedAppBar(
+        title: 'Kelola Kelas',
         actions: [
           IconButton(
-            icon: const Icon(Icons.sync),
+            icon: const Icon(Icons.sync, color: Colors.white),
             tooltip: 'Sinkronkan dari Spreadsheet',
             onPressed: _sinkronkanKelas,
           ),
@@ -235,7 +238,7 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton.extended(
+          ModernFAB(
             heroTag: 'import_massal',
             onPressed: () async {
               final imported = await Navigator.push<bool>(
@@ -244,70 +247,136 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
               );
               if (imported == true) _loadClasses();
             },
-            icon: const Icon(Icons.upload_file),
-            label: const Text('Import Massal'),
+            icon: Icons.upload_file,
+            label: 'Import Massal',
             backgroundColor: Colors.white,
-            foregroundColor: Colors.indigo,
+            foregroundColor: const Color(0xFF087BB9),
           ),
           const SizedBox(height: 10),
-          FloatingActionButton.extended(
+          ModernFAB(
             heroTag: 'tambah_kelas',
             onPressed: _tambahKelas,
-            icon: const Icon(Icons.add),
-            label: const Text('Tambah Kelas'),
+            icon: Icons.add,
+            label: 'Tambah Kelas',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingOverlay(message: 'Memuat data kelas...')
           : RefreshIndicator(
               onRefresh: _loadClasses,
+              color: const Color(0xFF087BB9),
               child: _classes.isEmpty
                   ? ListView(
+                      padding: const EdgeInsets.all(16),
                       children: const [
-                        SizedBox(height: 160),
-                        Center(child: Text('Belum ada kelas. Tambah dulu yuk.')),
+                        SizedBox(height: 60),
+                        EmptyStateWidget(
+                          icon: Icons.class_outlined,
+                          title: 'Belum ada kelas',
+                          subtitle:
+                              'Tekan tombol "Tambah Kelas"\nuntuk menambahkan kelas baru.',
+                        ),
                       ],
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+                      padding: const EdgeInsets.all(16),
                       itemCount: _classes.length,
                       itemBuilder: (ctx, i) {
                         final kelas = _classes[i];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0xFFEDEBFF),
-                              foregroundColor: Colors.indigo,
-                              child: Icon(Icons.class_),
-                            ),
-                            title: Text(
-                              kelas,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: const Text('Ketuk untuk kelola data siswa'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.red),
-                              onPressed: () => _hapusKelas(kelas),
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      CrudSiswaScreen(initialKelas: kelas),
-                                ),
-                              );
-                            },
-                          ),
+                        return _KelasManagementCard(
+                          kelas: kelas,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CrudSiswaScreen(initialKelas: kelas),
+                              ),
+                            );
+                          },
+                          onDelete: () => _hapusKelas(kelas),
                         );
                       },
                     ),
             ),
+    );
+  }
+}
+
+/// ==================== KELAS MANAGEMENT CARD ====================
+class _KelasManagementCard extends StatelessWidget {
+  final String kelas;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _KelasManagementCard({
+    required this.kelas,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ModernCard(
+        padding: const EdgeInsets.all(16),
+        onTap: onTap,
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE7A008).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.class_outlined,
+                color: Color(0xFFE7A008),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    kelas,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ketuk untuk kelola data siswa',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Delete button
+            DeleteIconButton(onPressed: onDelete),
+
+            // Arrow indicator
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Color(0xFF64748B),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
