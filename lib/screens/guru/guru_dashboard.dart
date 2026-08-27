@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/qr_service.dart';
 import '../../services/sheets_services.dart';
-import 'onboarding_screen.dart';
+import '../role_router.dart';
 import 'review_absensi_screen.dart';
 import 'riwayat_screen.dart';
 
@@ -270,13 +270,35 @@ class _GuruDashboardState extends State<GuruDashboard> {
   }
 
   void _backToMapelSelection() {
-    // Navigate back to onboarding with kelas already selected
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => OnboardingKelasMapelScreen(initialKelas: widget.kelas),
+    // Simply pop back to onboarding screen (no need to recreate)
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Kamu perlu login lagi untuk masuk ke aplikasi.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
+          ),
+        ],
       ),
-      (route) => false,
     );
+    if (confirmed == true && context.mounted) {
+      context.read<AuthService>().signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const RoleRouter()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -305,11 +327,14 @@ class _GuruDashboardState extends State<GuruDashboard> {
         backgroundColor: const Color(0xFFF5F7FA),
         body: Column(
           children: [
-            // Custom Header with rounded all corners
+            // Custom Header with rounded bottom only
             Container(
               decoration: const BoxDecoration(
                 color: Color(0xFF005DA7),
-                borderRadius: BorderRadius.all(Radius.circular(16)),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
               ),
               child: SafeArea(
                 bottom: false,
@@ -356,6 +381,19 @@ class _GuruDashboardState extends State<GuruDashboard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
+                        ),
+                      ),
+                      // Logout Button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF005DA7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                          tooltip: 'Keluar',
+                          onPressed: () => _confirmLogout(context),
+                          padding: const EdgeInsets.all(8),
                         ),
                       ),
                     ],

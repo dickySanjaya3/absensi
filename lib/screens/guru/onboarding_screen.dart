@@ -8,9 +8,7 @@ import '../role_router.dart';
 import 'guru_dashboard.dart';
 
 class OnboardingKelasMapelScreen extends StatefulWidget {
-  final String? initialKelas;
-
-  const OnboardingKelasMapelScreen({super.key, this.initialKelas});
+  const OnboardingKelasMapelScreen({super.key});
 
   @override
   State<OnboardingKelasMapelScreen> createState() =>
@@ -67,10 +65,6 @@ class _OnboardingKelasMapelScreenState
   @override
   void initState() {
     super.initState();
-    // Set selected kelas dari parameter jika ada
-    if (widget.initialKelas != null) {
-      _selectedKelas = widget.initialKelas;
-    }
     final email = context.read<AuthService>().currentUser?.email;
     if (email != null) {
       _loadAssignments(email);
@@ -101,7 +95,10 @@ class _OnboardingKelasMapelScreenState
   }
 
   void _goToDashboard(String kelas, String mapel) {
-    Navigator.pushReplacement(
+    // Set kelas yang sudah dipilih supaya saat back tetap di step pilih mapel
+    setState(() => _selectedKelas = kelas);
+    
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => GuruDashboard(kelas: kelas, mapel: mapel),
@@ -187,17 +184,15 @@ class _OnboardingKelasMapelScreenState
             )
           else
             Container(
-              width: 47,
-              height: 47,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
+                color: const Color(0xFF005DA7),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: IconButton(
-                icon: const Icon(Icons.person, color: Colors.white, size: 24),
-                tooltip: 'Profil',
+                icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                tooltip: 'Keluar',
                 onPressed: () => _confirmLogout(context),
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.all(8),
               ),
             ),
           const SizedBox(width: 12),
@@ -229,19 +224,6 @@ class _OnboardingKelasMapelScreenState
               ],
             ),
           ),
-          if (_selectedKelas == null)
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                tooltip: 'Keluar',
-                onPressed: () => _confirmLogout(context),
-                padding: const EdgeInsets.all(8),
-              ),
-            ),
         ],
       ),
     );
