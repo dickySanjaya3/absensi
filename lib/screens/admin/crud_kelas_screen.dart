@@ -60,153 +60,67 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
   }
 
   Future<void> _tambahKelas() async {
-    // 🔧 BUAT FOCUS NODE SENDIRI
-    final focusNode = FocusNode();
     final ctrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool isSaving = false;
 
-    final namaKelas = await showDialog<String>(
+    final namaKelas = await showModernDialog<String>(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        // 🔧 FOCUS DITANGANI DI SINI
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (focusNode.canRequestFocus) {
-            focusNode.requestFocus();
-          }
-        });
+      title: 'Tambah Kelas',
+      backgroundColor: const Color(0xFFE7A008),
+      builder: (ctx, isSaving, setDialogState) {
+        final formKey = GlobalKey<FormState>();
 
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: const Text('Tambah Kelas'),
-            content: Form(
-              key: formKey,
-              child: TextFormField(
-                controller: ctrl,
-                focusNode: focusNode, // 🔧 PAKAI FOCUS NODE SENDIRI
-                enabled: !isSaving,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Kelas',
-                  hintText: 'Contoh: 1A, 2B, 6C',
-                ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: isSaving
-                    ? null
-                    : () {
-                        // 🔧 UNFOCUS DAN DISPOSE FOCUS NODE
-                        focusNode.unfocus();
-                        focusNode.dispose();
-                        // 🔧 GUNAKAN addPostFrameCallback AGAR POP SETELAH UNFOCUS
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (ctx.mounted) {
-                            Navigator.pop(ctx);
-                          }
-                        });
-                      },
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: isSaving
-                    ? null
-                    : () async {
-                        if (!formKey.currentState!.validate()) return;
-                        // 🔧 UNFOCUS DULU
-                        focusNode.unfocus();
-                        // 🔧 TUNGGU SEBENTAR
-                        await Future.delayed(const Duration(milliseconds: 100));
-                        if (!ctx.mounted) return;
-                        setDialogState(() => isSaving = true);
-                        final error = await _sheetsService.addClass(
-                          ctrl.text.trim(),
-                        );
-                        if (!ctx.mounted) return;
-                        if (error == null) {
-                          focusNode.dispose();
-                          // 🔧 GUNAKAN addPostFrameCallback
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (ctx.mounted) {
-                              Navigator.pop(ctx, ctrl.text.trim());
-                            }
-                          });
-                        } else {
-                          setDialogState(() => isSaving = false);
-                          ScaffoldMessenger.of(
-                            ctx,
-                          ).showSnackBar(SnackBar(content: Text(error)));
-                        }
-                      },
-                child: isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Simpan'),
-              ),
-            ],
+        return Form(
+          key: formKey,
+          child: ModernTextField(
+            controller: ctrl,
+            labelText: 'Nama Kelas',
+            hintText: 'Contoh: 1A, 2B, 6C',
+            enabled: !isSaving,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
           ),
         );
       },
+      onConfirm: (ctx, setDialogState) async {
+        final formKey = ctx.findAncestorStateOfType<FormState>();
+        if (formKey != null && !formKey.validate()) return null;
+
+        final error = await _sheetsService.addClass(ctrl.text.trim());
+        if (error == null) {
+          return ctrl.text.trim();
+        } else {
+          if (ctx.mounted) {
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              SnackBar(content: Text(error)),
+            );
+          }
+          return null;
+        }
+      },
     );
 
-    // 🔧 DISPOSE CONTROLLER
     ctrl.dispose();
-    // 🔧 PASTIKAN FOCUS NODE DI-DISPOSE
-    focusNode.dispose();
 
     if (namaKelas != null) {
       await _loadClasses();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Kelas "$namaKelas" ditambahkan')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kelas "$namaKelas" ditambahkan')),
+        );
       }
     }
   }
 
   Future<void> _hapusKelas(String namaKelas) async {
-    // 🔧 BUAT FOCUS NODE UNTUK DIALOG HAPUS
-    final focusNode = FocusNode();
-
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModernConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus kelas?'),
-        content: Text(
+      title: 'Hapus kelas?',
+      message:
           '"$namaKelas" akan dihapus dari daftar kelas. '
           'Data siswa di tab kelas ini TIDAK ikut terhapus.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              focusNode.unfocus();
-              focusNode.dispose();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (ctx.mounted) Navigator.pop(ctx, false);
-              });
-            },
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () {
-              focusNode.unfocus();
-              focusNode.dispose();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              });
-            },
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+      confirmText: 'Hapus',
+      backgroundColor: const Color(0xFFE7A008),
     );
-    focusNode.dispose();
 
     if (confirmed != true) return;
 
@@ -215,9 +129,9 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
     if (ok) {
       await _loadClasses();
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Gagal menghapus kelas')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menghapus kelas')),
+      );
     }
   }
 

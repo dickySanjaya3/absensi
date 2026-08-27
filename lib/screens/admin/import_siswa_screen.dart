@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 
 /// Layar "Import Massal Siswa": admin tempel (paste) data siswa yang disalin
 /// dari file lain (PDF, Excel, Google Sheets, dsb) - 1 baris = 1 siswa,
@@ -133,26 +134,16 @@ class _ImportSiswaScreenState extends State<ImportSiswaScreen> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModernConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Import siswa?'),
-        content: Text(
+      title: 'Import siswa?',
+      message:
           '${_preview.length} siswa akan ditambahkan ke kelas "$kelas". '
           'ID tiap siswa akan dibuat otomatis oleh sistem.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
+      confirmText: 'Import',
+      backgroundColor: const Color(0xFF1FA97A),
     );
+
     if (confirmed != true) return;
 
     setState(() => _importing = true);

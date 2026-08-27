@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 
 class RiwayatScreen extends StatefulWidget {
   final String kelas;
@@ -66,61 +67,76 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     int selectedYear = now.year;
     int selectedMonth = now.month;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModernDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Unduh Rekap Bulanan'),
-          content: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: selectedMonth,
-                  decoration: const InputDecoration(labelText: 'Bulan'),
-                  items: List.generate(12, (i) => i + 1)
-                      .map(
-                        (m) => DropdownMenuItem(
-                          value: m,
-                          child: Text(_namaBulan(m)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) =>
-                      setDialogState(() => selectedMonth = v ?? selectedMonth),
+      title: 'Unduh Rekap Bulanan',
+      backgroundColor: const Color(0xFF087BB9),
+      builder: (ctx, isSaving, setDialogState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Bulan Dropdown
+            DropdownButtonFormField<int>(
+              value: selectedMonth,
+              decoration: InputDecoration(
+                labelText: 'Bulan',
+                filled: true,
+                fillColor: const Color(0xFFF9FAFB),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: selectedYear,
-                  decoration: const InputDecoration(labelText: 'Tahun'),
-                  items: List.generate(5, (i) => now.year - i)
-                      .map(
-                        (y) => DropdownMenuItem(
-                          value: y,
-                          child: Text(y.toString()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) =>
-                      setDialogState(() => selectedYear = v ?? selectedYear),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal'),
+              items: List.generate(12, (i) => i + 1)
+                  .map(
+                    (m) => DropdownMenuItem(
+                      value: m,
+                      child: Text(_namaBulan(m)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: isSaving
+                  ? null
+                  : (v) => setDialogState(() => selectedMonth = v ?? selectedMonth),
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Unduh'),
+            const SizedBox(height: 14),
+            // Tahun Dropdown
+            DropdownButtonFormField<int>(
+              value: selectedYear,
+              decoration: InputDecoration(
+                labelText: 'Tahun',
+                filled: true,
+                fillColor: const Color(0xFFF9FAFB),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+              ),
+              items: List.generate(5, (i) => now.year - i)
+                  .map(
+                    (y) => DropdownMenuItem(
+                      value: y,
+                      child: Text(y.toString()),
+                    ),
+                  )
+                  .toList(),
+              onChanged: isSaving
+                  ? null
+                  : (v) => setDialogState(() => selectedYear = v ?? selectedYear),
             ),
           ],
-        ),
-      ),
+        );
+      },
+      onConfirm: (ctx, setDialogState) async {
+        return true;
+      },
+      confirmText: 'Unduh',
     );
 
     if (confirmed != true) return;
@@ -152,39 +168,46 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   void _showResultDialog(String url) {
-    showDialog(
+    showModernDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rekap Berhasil Dibuat'),
-        content: Column(
+      title: 'Rekap Berhasil Dibuat',
+      backgroundColor: const Color(0xFF1FA97A),
+      builder: (ctx, isSaving, setDialogState) {
+        return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Rekap bulanan sudah tersimpan sebagai Google Sheet:'),
-            const SizedBox(height: 8),
-            SelectableText(
-              url,
-              style: const TextStyle(color: Colors.indigo, fontSize: 12),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.black.withValues(alpha: 0.1),
+                ),
+              ),
+              child: SelectableText(
+                url,
+                style: const TextStyle(
+                  color: Color(0xFF087BB9),
+                  fontSize: 12,
+                ),
+              ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            icon: const Icon(Icons.open_in_new, size: 18),
-            label: const Text('Buka'),
-          ),
-        ],
-      ),
+        );
+      },
+      onConfirm: (ctx, setDialogState) async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+        return true;
+      },
+      confirmText: 'Buka',
+      cancelText: 'Tutup',
     );
   }
 

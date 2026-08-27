@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sheets_services.dart';
+import '../../widgets/admin_widgets.dart';
 import '../role_router.dart';
 import 'guru_dashboard.dart';
 
@@ -107,23 +108,14 @@ class _OnboardingKelasMapelScreenState
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModernConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari akun?'),
-        content: const Text('Kamu perlu login lagi untuk masuk ke aplikasi.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Keluar'),
-          ),
-        ],
-      ),
+      title: 'Keluar dari akun?',
+      message: 'Kamu perlu login lagi untuk masuk ke aplikasi.',
+      confirmText: 'Keluar',
+      backgroundColor: const Color(0xFF087BB9),
     );
+
     if (confirmed == true && context.mounted) {
       context.read<AuthService>().signOut();
       // Bersihkan seluruh stack navigator dan pasang ulang RoleRouter,
