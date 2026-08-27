@@ -321,6 +321,7 @@ class ModernFAB extends StatelessWidget {
   final String? label;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final String? heroTag;
 
   const ModernFAB({
     super.key,
@@ -329,6 +330,7 @@ class ModernFAB extends StatelessWidget {
     this.label,
     this.backgroundColor,
     this.foregroundColor,
+    this.heroTag,
   });
 
   @override
@@ -336,6 +338,7 @@ class ModernFAB extends StatelessWidget {
     if (label != null) {
       return FloatingActionButton.extended(
         onPressed: onPressed,
+        heroTag: heroTag,
         backgroundColor: backgroundColor ?? const Color(0xFF087BB9),
         foregroundColor: foregroundColor ?? Colors.white,
         icon: Icon(icon),
@@ -348,6 +351,7 @@ class ModernFAB extends StatelessWidget {
 
     return FloatingActionButton(
       onPressed: onPressed,
+      heroTag: heroTag,
       backgroundColor: backgroundColor ?? const Color(0xFF087BB9),
       foregroundColor: foregroundColor ?? Colors.white,
       child: Icon(icon),
