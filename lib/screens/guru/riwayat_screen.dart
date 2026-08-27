@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -44,22 +45,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       _attendance = attendance;
       _loading = false;
     });
-  }
-
-  Future<void> _updateStatus(int index, String status) async {
-    final item = _attendance[index];
-    if (!await _service.updateAttendanceStatus(
-      rowNumber: (item['_rowNumber'] as num).toInt(),
-      status: status,
-    )) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Status gagal disimpan ke spreadsheet')),
-        );
-      }
-      return;
-    }
-    setState(() => item['status'] = status);
   }
 
   Future<void> _pilihBulanLaluExport() async {
@@ -219,81 +204,296 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     return nama[m - 1];
   }
 
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Hadir':
+        return const Color(0xFF1FA97A);
+      case 'Izin':
+        return const Color(0xFF2F6FED);
+      case 'Sakit':
+        return const Color(0xFFE7A008);
+      case 'Alpa':
+        return const Color(0xFFE0587A);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'Hadir':
+        return Icons.check_circle;
+      case 'Izin':
+        return Icons.info;
+      case 'Sakit':
+        return Icons.local_hospital;
+      case 'Alpa':
+        return Icons.cancel;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp);
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year} • ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return timestamp;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
       body: Column(
         children: [
+          // Header info dengan download button
           Container(
-            padding: const EdgeInsets.all(12),
-            color: Colors.indigo.shade50,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    'Riwayat Presensi: ${widget.kelas} - ${widget.mapel}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Riwayat Presensi',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.kelas} • ${widget.mapel}',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 _isExporting
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.download_outlined,
-                          color: Colors.indigo,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005DA7)),
                         ),
-                        onPressed: _pilihBulanLaluExport,
-                        tooltip: 'Unduh Rekap Bulanan',
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF005DA7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.download_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: _pilihBulanLaluExport,
+                          tooltip: 'Unduh Rekap Bulanan',
+                          padding: const EdgeInsets.all(8),
+                        ),
                       ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.indigo),
-                  onPressed: _load,
-                  tooltip: 'Muat ulang',
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      color: Color(0xFF005DA7),
+                      size: 20,
+                    ),
+                    onPressed: _load,
+                    tooltip: 'Muat ulang',
+                    padding: const EdgeInsets.all(8),
+                  ),
                 ),
               ],
             ),
           ),
+          
+          // Content
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005DA7)),
+                    ),
+                  )
                 : _attendance.isEmpty
-                ? const Center(child: Text('Belum ada riwayat presensi'))
-                : ListView.builder(
-                    itemCount: _attendance.length,
-                    itemBuilder: (context, index) {
-                      final item = _attendance[index];
-                      final nama =
-                          (item['nama'] ?? item['siswaId'] ?? '-').toString();
-                      final nis = item['nis']?.toString();
-                      final subtitle = [
-                        if (nis != null && nis.isNotEmpty) 'NIS: $nis',
-                        (item['timestamp'] ?? '').toString(),
-                      ].where((s) => s.isNotEmpty).join(' • ');
-                      return ListTile(
-                        title: Text(nama),
-                        subtitle: Text(subtitle),
-                        trailing: DropdownButton<String>(
-                          value: item['status'],
-                          items: ['Hadir', 'Izin', 'Sakit', 'Alpa', 'Belum']
-                              .map(
-                                (status) => DropdownMenuItem(
-                                  value: status,
-                                  child: Text(status),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (status) {
-                            if (status != null) _updateStatus(index, status);
-                          },
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.history_rounded,
+                                size: 48,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Belum ada riwayat presensi',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Riwayat akan muncul setelah melakukan scan QR',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _attendance.length,
+                        itemBuilder: (context, index) {
+                          final item = _attendance[index];
+                          final nama = (item['nama'] ?? item['siswaId'] ?? '-').toString();
+                          final nis = item['nis']?.toString() ?? '';
+                          final timestamp = (item['timestamp'] ?? '').toString();
+                          final status = (item['status'] ?? 'Belum').toString();
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  // Avatar
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: _statusColor(status).withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        nama.isNotEmpty ? nama[0].toUpperCase() : '?',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: _statusColor(status),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  
+                                  // Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          nama,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1E293B),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        if (nis.isNotEmpty)
+                                          Text(
+                                            'NIS: $nis',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        if (timestamp.isNotEmpty)
+                                          Text(
+                                            _formatTimestamp(timestamp),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: const Color(0xFF94A3B8),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  
+                                  // Status badge (read-only)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: _statusColor(status).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _statusIcon(status),
+                                          size: 16,
+                                          color: _statusColor(status),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          status,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: _statusColor(status),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

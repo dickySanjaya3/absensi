@@ -302,7 +302,6 @@ class _GuruDashboardState extends State<GuruDashboard> {
         key: ValueKey('${widget.kelas}-${widget.mapel}-$_currentIndex'),
         kelas: widget.kelas,
         mapel: widget.mapel,
-        onLihatSemua: () => setState(() => _currentIndex = 2),
         scanResults: _scanResults,
       ),
       const SizedBox.shrink(),
@@ -650,14 +649,12 @@ class ScannerOverlayPainter extends CustomPainter {
 class _BerandaTab extends StatefulWidget {
   final String kelas;
   final String mapel;
-  final VoidCallback onLihatSemua;
   final Map<String, String> scanResults;
 
   const _BerandaTab({
     super.key,
     required this.kelas,
     required this.mapel,
-    required this.onLihatSemua,
     required this.scanResults,
   });
 
@@ -909,18 +906,6 @@ class _BerandaTabState extends State<_BerandaTab> {
                     ),
                   ),
                 ],
-              ),
-              TextButton(
-                onPressed: widget.onLihatSemua,
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF005DA7),
-                ),
-                child: Text(
-                  'Lihat Semua',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
             ],
           ),
