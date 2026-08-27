@@ -286,7 +286,7 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
 }
 
 /// ==================== ASSIGNMENT CARD ====================
-class _AssignmentCard extends StatelessWidget {
+class _AssignmentCard extends StatefulWidget {
   final Map<String, dynamic> assignment;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -298,62 +298,110 @@ class _AssignmentCard extends StatelessWidget {
   });
 
   @override
+  State<_AssignmentCard> createState() => _AssignmentCardState();
+}
+
+class _AssignmentCardState extends State<_AssignmentCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final kelas = assignment['Kelas']?.toString() ?? '-';
-    final mapel = assignment['Mata Pelajaran']?.toString() ?? '-';
-    final email = assignment['Email Guru']?.toString() ?? '-';
+    final kelas = widget.assignment['Kelas']?.toString() ?? '-';
+    final mapel = widget.assignment['Mata Pelajaran']?.toString() ?? '-';
+    final email = widget.assignment['Email Guru']?.toString() ?? '-';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ModernCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.assignment_outlined,
-                color: Color(0xFF7C3AED),
-                size: 24,
-              ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        transform: Matrix4.identity()
+          ..translate(0.0, _isHovered ? -2.0 : 0.0),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isHovered
+                  ? const Color(0xFF7C3AED).withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: _isHovered ? 2 : 1,
             ),
-            const SizedBox(width: 14),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$kelas - $mapel',
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2937),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? const Color(0xFF7C3AED).withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: _isHovered ? 12 : 4,
+                offset: Offset(0, _isHovered ? 4 : 2),
               ),
-            ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Icon
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(
+                    alpha: _isHovered ? 0.2 : 0.15,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.assignment_outlined,
+                  color: Color(0xFF7C3AED),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
 
-            // Actions
-            EditIconButton(onPressed: onEdit),
-            DeleteIconButton(onPressed: onDelete),
-          ],
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$kelas - $mapel',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Actions
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _isHovered ? 1.0 : 0.7,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EditIconButton(onPressed: widget.onEdit),
+                    DeleteIconButton(onPressed: widget.onDelete),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

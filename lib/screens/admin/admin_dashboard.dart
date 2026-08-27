@@ -66,6 +66,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     final adminEmail = context.watch<AuthService>().currentUser?.email ?? '';
     final adminName = context.watch<AuthService>().currentUser?.nama ?? 'Admin';
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth > 600;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -85,80 +87,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 onRefresh: _loadStats,
                 color: const Color(0xFF087BB9),
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isWideScreen ? 24 : 16,
+                    vertical: 20,
+                  ),
                   children: [
                     // Stats Section
-                    Text(
-                      'Statistik',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: StatBox(
-                            label: 'GURU',
-                            value: _totalGuru,
-                            color: const Color(0xFF2F6FED),
-                            icon: Icons.person_outline,
-                            loading: _loadingStats,
+                        Text(
+                          'Statistik',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: StatBox(
-                            label: 'SISWA',
-                            value: _totalSiswa,
-                            color: const Color(0xFF1FA97A),
-                            icon: Icons.people_outline,
-                            loading: _loadingStats,
+                        if (_loadingStats)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: StatBox(
-                            label: 'KELAS',
-                            value: _totalKelas,
-                            color: const Color(0xFFE7A008),
-                            icon: Icons.school_outlined,
-                            loading: _loadingStats,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: StatBox(
-                            label: 'ASSIGNMENT',
-                            value: 0,
-                            color: const Color(0xFF7C3AED),
-                            icon: Icons.assignment_outlined,
-                            loading: false,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                    
+                    // Stats Grid - 2x2 dengan spacing proporsional
+                    _buildStatsGrid(),
+                    
+                    const SizedBox(height: 32),
 
                     // Menu Section
                     Text(
                       'Menu Manajemen',
                       style: GoogleFonts.poppins(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF1E293B),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                    // Menu Cards
-                    MenuCard(
+                    // Menu Cards dengan spacing lebih baik
+                    _AnimatedMenuCard(
                       icon: Icons.person_outline,
                       iconColor: const Color(0xFF2F6FED),
                       title: 'Manajemen Guru',
@@ -166,9 +139,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       badge: _loadingStats ? '...' : '${_totalGuru ?? 0} Guru',
                       onTap: () => _bukaHalaman(const CrudGuruScreen()),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    MenuCard(
+                    _AnimatedMenuCard(
                       icon: Icons.people_outline,
                       iconColor: const Color(0xFF1FA97A),
                       title: 'Manajemen Siswa',
@@ -176,9 +149,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       badge: _loadingStats ? '...' : '${_totalSiswa ?? 0} Siswa',
                       onTap: () => _bukaHalaman(const CrudSiswaScreen()),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    MenuCard(
+                    _AnimatedMenuCard(
                       icon: Icons.school_outlined,
                       iconColor: const Color(0xFFE7A008),
                       title: 'Manajemen Kelas',
@@ -186,29 +159,344 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       badge: _loadingStats ? '...' : '${_totalKelas ?? 0} Kelas',
                       onTap: () => _bukaHalaman(const CrudKelasScreen()),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    MenuCard(
+                    _AnimatedMenuCard(
                       icon: Icons.assignment_outlined,
                       iconColor: const Color(0xFF7C3AED),
                       title: 'Kelola Assignment',
                       subtitle: 'Atur penugasan guru ke kelas & mapel.',
                       onTap: () => _bukaHalaman(const CrudAssignmentScreen()),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    MenuCard(
+                    _AnimatedMenuCard(
                       icon: Icons.qr_code_2_rounded,
                       iconColor: const Color(0xFFE0587A),
                       title: 'Kartu ID / Barcode',
                       subtitle: 'Generate & cetak kartu QR siswa.',
                       onTap: () => _bukaHalaman(const GenerateQRScreen()),
                     ),
+                    
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          children: [
+            Expanded(
+              child: _AnimatedStatBox(
+                label: 'GURU',
+                value: _totalGuru,
+                color: const Color(0xFF2F6FED),
+                icon: Icons.person_outline,
+                loading: _loadingStats,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _AnimatedStatBox(
+                label: 'SISWA',
+                value: _totalSiswa,
+                color: const Color(0xFF1FA97A),
+                icon: Icons.people_outline,
+                loading: _loadingStats,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _AnimatedStatBox(
+                label: 'KELAS',
+                value: _totalKelas,
+                color: const Color(0xFFE7A008),
+                icon: Icons.school_outlined,
+                loading: _loadingStats,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _AnimatedStatBox(
+                label: 'TUGAS',
+                value: 0,
+                color: const Color(0xFF7C3AED),
+                icon: Icons.assignment_outlined,
+                loading: false,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// ==================== ANIMATED STAT BOX ====================
+class _AnimatedStatBox extends StatefulWidget {
+  final String label;
+  final int? value;
+  final Color color;
+  final IconData? icon;
+  final bool loading;
+
+  const _AnimatedStatBox({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.icon,
+    this.loading = false,
+  });
+
+  @override
+  State<_AnimatedStatBox> createState() => _AnimatedStatBoxState();
+}
+
+class _AnimatedStatBoxState extends State<_AnimatedStatBox> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        transform: Matrix4.identity()..scale(_isHovered ? 1.03 : 1.0),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHovered
+                ? widget.color.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.06),
+            width: _isHovered ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered
+                  ? widget.color.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.04),
+              blurRadius: _isHovered ? 12 : 4,
+              offset: Offset(0, _isHovered ? 4 : 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.icon != null)
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: widget.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: widget.color,
+                  size: 20,
+                ),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              widget.label,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                color: const Color(0xFF9CA3AF),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            widget.loading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    widget.value?.toString() ?? '0',
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: widget.color,
+                      height: 1,
+                    ),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ==================== ANIMATED MENU CARD ====================
+class _AnimatedMenuCard extends StatefulWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final String? badge;
+  final VoidCallback onTap;
+
+  const _AnimatedMenuCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    this.badge,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedMenuCard> createState() => _AnimatedMenuCardState();
+}
+
+class _AnimatedMenuCardState extends State<_AnimatedMenuCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        transform: Matrix4.identity()
+          ..translate(_isHovered ? 0.0 : 0.0, _isHovered ? -4.0 : 0.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered
+                ? widget.iconColor.withValues(alpha: 0.3)
+                : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered
+                  ? widget.iconColor.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: _isHovered ? 16 : 4,
+              offset: Offset(0, _isHovered ? 8 : 2),
+            ),
+            if (_isHovered)
+              BoxShadow(
+                color: widget.iconColor.withValues(alpha: 0.1),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+                spreadRadius: -4,
+              ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: widget.onTap,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  // Icon
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: widget.iconColor.withValues(
+                        alpha: _isHovered ? 0.2 : 0.12,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      color: widget.iconColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.subtitle,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Badge
+                  if (widget.badge != null) ...[
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: widget.iconColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        widget.badge!,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: widget.iconColor,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Arrow
+                  const SizedBox(width: 12),
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 200),
+                    turns: _isHovered ? 0.0 : 0.0,
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: widget.iconColor.withValues(
+                        alpha: _isHovered ? 1.0 : 0.5,
+                      ),
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

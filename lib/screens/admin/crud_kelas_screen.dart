@@ -304,7 +304,7 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
 }
 
 /// ==================== KELAS MANAGEMENT CARD ====================
-class _KelasManagementCard extends StatelessWidget {
+class _KelasManagementCard extends StatefulWidget {
   final String kelas;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -316,65 +316,113 @@ class _KelasManagementCard extends StatelessWidget {
   });
 
   @override
+  State<_KelasManagementCard> createState() => _KelasManagementCardState();
+}
+
+class _KelasManagementCardState extends State<_KelasManagementCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ModernCard(
-        padding: const EdgeInsets.all(16),
-        onTap: onTap,
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE7A008).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.class_outlined,
-                color: Color(0xFFE7A008),
-                size: 24,
-              ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        transform: Matrix4.identity()
+          ..translate(0.0, _isHovered ? -2.0 : 0.0),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isHovered
+                  ? const Color(0xFFE7A008).withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: _isHovered ? 2 : 1,
             ),
-            const SizedBox(width: 14),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    kelas,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2937),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? const Color(0xFFE7A008).withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: _isHovered ? 12 : 4,
+                offset: Offset(0, _isHovered ? 4 : 2),
+              ),
+            ],
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: widget.onTap,
+            child: Row(
+              children: [
+                // Icon
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7A008).withValues(
+                      alpha: _isHovered ? 0.2 : 0.15,
                     ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Ketuk untuk kelola data siswa',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF64748B),
-                    ),
+                  child: const Icon(
+                    Icons.class_outlined,
+                    color: Color(0xFFE7A008),
+                    size: 24,
                   ),
-                ],
-              ),
-            ),
+                ),
+                const SizedBox(width: 14),
 
-            // Delete button
-            DeleteIconButton(onPressed: onDelete),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.kelas,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ketuk untuk kelola data siswa',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-            // Arrow indicator
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Color(0xFF64748B),
+                // Delete button
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _isHovered ? 1.0 : 0.7,
+                  child: DeleteIconButton(onPressed: widget.onDelete),
+                ),
+
+                // Arrow indicator
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _isHovered ? 1.0 : 0.5,
+                  child: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

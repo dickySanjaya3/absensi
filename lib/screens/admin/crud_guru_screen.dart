@@ -14,12 +14,37 @@ class CrudGuruScreen extends StatefulWidget {
 class _CrudGuruScreenState extends State<CrudGuruScreen> {
   final SheetsService _sheetsService = SheetsService();
   List<Map<String, dynamic>> _gurus = [];
+  List<Map<String, dynamic>> _filteredGurus = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadGurus();
+    _searchController.addListener(_filterGurus);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterGurus() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredGurus = _gurus;
+      } else {
+        _filteredGurus = _gurus.where((guru) {
+          final nama = guru['Nama Guru']?.toString().toLowerCase() ?? '';
+          final email = guru['Email']?.toString().toLowerCase() ?? '';
+          return nama.contains(_searchQuery) || email.contains(_searchQuery);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _loadGurus() async {
@@ -27,6 +52,7 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
     if (!mounted) return;
     setState(() {
       _gurus = gurus;
+      _filteredGurus = gurus;
       _isLoading = false;
     });
   }
@@ -277,41 +303,138 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
       ),
       body: _isLoading
           ? const LoadingOverlay(message: 'Memuat data guru...')
-          : RefreshIndicator(
-              onRefresh: _loadGurus,
-              color: const Color(0xFF087BB9),
-              child: _gurus.isEmpty
-                  ? ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: const [
-                        SizedBox(height: 60),
-                        EmptyStateWidget(
-                          icon: Icons.person_add_outlined,
-                          title: 'Belum ada akun guru',
-                          subtitle:
-                              'Tekan tombol "Tambah Guru"\nuntuk menambahkan akun guru baru.',
+          : Column(
+              children: [
+                // Search Bar
+                if (_gurus.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari guru berdasarkan nama atau email...',
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF64748B),
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Color(0xFF64748B),
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.black.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.black.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF087BB9),
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Results count
+                if (_gurus.isNotEmpty && _searchQuery.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Ditemukan ${_filteredGurus.length} dari ${_gurus.length} guru',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
                       ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _gurus.length,
-                      itemBuilder: (ctx, index) {
-                        final guru = _gurus[index];
-                        return _GuruListItem(
-                          guru: guru,
-                          onEdit: () => _showFormDialog(guru: guru, index: index),
-                          onDelete: () => _deleteGuru(index),
-                        );
-                      },
                     ),
+                  ),
+
+                // List
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _loadGurus,
+                    color: const Color(0xFF087BB9),
+                    child: _gurus.isEmpty
+                        ? ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: const [
+                              SizedBox(height: 60),
+                              EmptyStateWidget(
+                                icon: Icons.person_add_outlined,
+                                title: 'Belum ada akun guru',
+                                subtitle:
+                                    'Tekan tombol "Tambah Guru"\nuntuk menambahkan akun guru baru.',
+                              ),
+                            ],
+                          )
+                        : _filteredGurus.isEmpty
+                            ? ListView(
+                                padding: const EdgeInsets.all(16),
+                                children: [
+                                  const SizedBox(height: 60),
+                                  EmptyStateWidget(
+                                    icon: Icons.search_off,
+                                    title: 'Tidak ditemukan',
+                                    subtitle:
+                                        'Guru dengan kata kunci "$_searchQuery"\ntidak ditemukan.',
+                                  ),
+                                ],
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _filteredGurus.length,
+                                itemBuilder: (ctx, index) {
+                                  final guru = _filteredGurus[index];
+                                  final originalIndex = _gurus.indexOf(guru);
+                                  return _GuruListItem(
+                                    guru: guru,
+                                    onEdit: () => _showFormDialog(
+                                      guru: guru,
+                                      index: originalIndex,
+                                    ),
+                                    onDelete: () => _deleteGuru(originalIndex),
+                                  );
+                                },
+                              ),
+                  ),
+                ),
+              ],
             ),
     );
   }
 }
 
 /// ==================== GURU LIST ITEM ====================
-class _GuruListItem extends StatelessWidget {
+class _GuruListItem extends StatefulWidget {
   final Map<String, dynamic> guru;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -323,94 +446,142 @@ class _GuruListItem extends StatelessWidget {
   });
 
   @override
+  State<_GuruListItem> createState() => _GuruListItemState();
+}
+
+class _GuruListItemState extends State<_GuruListItem> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final nama = guru['Nama Guru']?.toString() ?? '-';
-    final email = guru['Email']?.toString() ?? '-';
-    final status = guru['Status']?.toString() ?? '-';
+    final nama = widget.guru['Nama Guru']?.toString() ?? '-';
+    final email = widget.guru['Email']?.toString() ?? '-';
+    final status = widget.guru['Status']?.toString() ?? '-';
     final initial = nama.isNotEmpty ? nama[0].toUpperCase() : '?';
 
     final statusColor = status.toLowerCase() == 'aktif'
         ? const Color(0xFF1FA97A)
         : const Color(0xFF64748B);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ModernCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Avatar with initial
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2F6FED).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        transform: Matrix4.identity()
+          ..translate(0.0, _isHovered ? -2.0 : 0.0),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isHovered
+                  ? const Color(0xFF2F6FED).withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: _isHovered ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? const Color(0xFF2F6FED).withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: _isHovered ? 12 : 4,
+                offset: Offset(0, _isHovered ? 4 : 2),
               ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF2F6FED),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+            ],
+          ),
+          child: Row(
+            children: [
+              // Avatar with initial
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2F6FED).withValues(
+                    alpha: _isHovered ? 0.2 : 0.15,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF2F6FED),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 14),
+              const SizedBox(width: 14),
 
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    nama,
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2937),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          shape: BoxShape.circle,
-                        ),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nama,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1F2937),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        status,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: statusColor,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF64748B),
                       ),
-                    ],
-                  ),
-                ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          status,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: statusColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Actions
-            EditIconButton(onPressed: onEdit),
-            DeleteIconButton(onPressed: onDelete),
-          ],
+              // Actions
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _isHovered ? 1.0 : 0.7,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EditIconButton(onPressed: widget.onEdit),
+                    DeleteIconButton(onPressed: widget.onDelete),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

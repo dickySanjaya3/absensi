@@ -20,14 +20,42 @@ class CrudSiswaScreen extends StatefulWidget {
 class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
   final SheetsService _sheetsService = SheetsService();
   List<Map<String, dynamic>> _students = [];
+  List<Map<String, dynamic>> _filteredStudents = [];
   List<String> _classes = [];
   String? _selectedKelas;
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadClasses();
+    _searchController.addListener(_filterStudents);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterStudents() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+      if (_searchQuery.isEmpty) {
+        _filteredStudents = _students;
+      } else {
+        _filteredStudents = _students.where((student) {
+          final nama = student['Nama']?.toString().toLowerCase() ?? '';
+          final id = student['ID']?.toString().toLowerCase() ?? '';
+          final nis = student['NIS']?.toString().toLowerCase() ?? '';
+          return nama.contains(_searchQuery) ||
+              id.contains(_searchQuery) ||
+              nis.contains(_searchQuery);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _loadClasses() async {
@@ -51,6 +79,7 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
     if (!mounted) return;
     setState(() {
       _students = students;
+      _filteredStudents = students;
       _isLoading = false;
     });
   }
@@ -420,32 +449,133 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                               ),
                             ],
                           )
-                        : _students.isEmpty
-                            ? ListView(
-                                padding: const EdgeInsets.all(16),
-                                children: const [
-                                  SizedBox(height: 60),
-                                  EmptyStateWidget(
-                                    icon: Icons.person_add_outlined,
-                                    title: 'Belum ada data siswa',
-                                    subtitle:
-                                        'Tekan "Tambah Siswa" atau "Import Massal"\nuntuk menambahkan data siswa.',
+                        : Column(
+                            children: [
+                              // Search Bar
+                              if (_students.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Cari siswa (nama, ID, atau NIS)...',
+                                      hintStyle: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: const Color(0xFF9CA3AF),
+                                      ),
+                                      prefixIcon: const Icon(
+                                        Icons.search,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                Icons.clear,
+                                                color: Color(0xFF64748B),
+                                              ),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                              },
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.black.withValues(alpha: 0.1),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.black.withValues(alpha: 0.1),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF087BB9),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: _students.length,
-                                itemBuilder: (ctx, index) {
-                                  final student = _students[index];
-                                  return _SiswaListItem(
-                                    student: student,
-                                    onEdit: () =>
-                                        _showFormDialog(student: student, index: index),
-                                    onDelete: () => _deleteStudent(index),
-                                  );
-                                },
+                                ),
+
+                              // Results count
+                              if (_students.isNotEmpty && _searchQuery.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        'Ditemukan ${_filteredStudents.length} dari ${_students.length} siswa',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              // List
+                              Expanded(
+                                child: _students.isEmpty
+                                    ? ListView(
+                                        padding: const EdgeInsets.all(16),
+                                        children: const [
+                                          SizedBox(height: 60),
+                                          EmptyStateWidget(
+                                            icon: Icons.person_add_outlined,
+                                            title: 'Belum ada data siswa',
+                                            subtitle:
+                                                'Tekan "Tambah Siswa" atau "Import Massal"\nuntuk menambahkan data siswa.',
+                                          ),
+                                        ],
+                                      )
+                                    : _filteredStudents.isEmpty
+                                        ? ListView(
+                                            padding: const EdgeInsets.all(16),
+                                            children: [
+                                              const SizedBox(height: 60),
+                                              EmptyStateWidget(
+                                                icon: Icons.search_off,
+                                                title: 'Tidak ditemukan',
+                                                subtitle:
+                                                    'Siswa dengan kata kunci "$_searchQuery"\ntidak ditemukan.',
+                                              ),
+                                            ],
+                                          )
+                                        : ListView.builder(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 8,
+                                            ),
+                                            itemCount: _filteredStudents.length,
+                                            itemBuilder: (ctx, index) {
+                                              final student = _filteredStudents[index];
+                                              final originalIndex =
+                                                  _students.indexOf(student);
+                                              return _SiswaListItem(
+                                                student: student,
+                                                onEdit: () => _showFormDialog(
+                                                  student: student,
+                                                  index: originalIndex,
+                                                ),
+                                                onDelete: () =>
+                                                    _deleteStudent(originalIndex),
+                                              );
+                                            },
+                                          ),
                               ),
+                            ],
+                          ),
                   ),
                 ],
               ),
@@ -495,7 +625,7 @@ class _KelasSelector extends StatelessWidget {
 }
 
 /// ==================== SISWA LIST ITEM ====================
-class _SiswaListItem extends StatelessWidget {
+class _SiswaListItem extends StatefulWidget {
   final Map<String, dynamic> student;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -507,11 +637,18 @@ class _SiswaListItem extends StatelessWidget {
   });
 
   @override
+  State<_SiswaListItem> createState() => _SiswaListItemState();
+}
+
+class _SiswaListItemState extends State<_SiswaListItem> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final nama = student['Nama']?.toString() ?? '-';
-    final id = student['ID']?.toString() ?? '-';
-    final nis = student['NIS']?.toString() ?? '-';
-    final jk = student['Jenis Kelamin']?.toString() ?? '-';
+    final nama = widget.student['Nama']?.toString() ?? '-';
+    final id = widget.student['ID']?.toString() ?? '-';
+    final nis = widget.student['NIS']?.toString() ?? '-';
+    final jk = widget.student['Jenis Kelamin']?.toString() ?? '-';
     final initial = nama.isNotEmpty ? nama[0].toUpperCase() : '?';
 
     final jenisKelaminColor = jk == 'L'
@@ -520,85 +657,124 @@ class _SiswaListItem extends StatelessWidget {
             ? const Color(0xFFE0587A)
             : const Color(0xFF64748B);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ModernCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Avatar with initial
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1FA97A).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        transform: Matrix4.identity()
+          ..translate(0.0, _isHovered ? -2.0 : 0.0),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isHovered
+                  ? const Color(0xFF1FA97A).withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: _isHovered ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? const Color(0xFF1FA97A).withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: _isHovered ? 12 : 4,
+                offset: Offset(0, _isHovered ? 4 : 2),
               ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF1FA97A),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+            ],
+          ),
+          child: Row(
+            children: [
+              // Avatar with initial
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1FA97A).withValues(
+                    alpha: _isHovered ? 0.2 : 0.15,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF1FA97A),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 14),
+              const SizedBox(width: 14),
 
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    nama,
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F2937),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nama,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1F2937),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'ID: $id | NIS: $nis',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF64748B),
+                    const SizedBox(height: 4),
+                    Text(
+                      'ID: $id | NIS: $nis',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF64748B),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: jenisKelaminColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          jk,
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: jenisKelaminColor,
-                            fontWeight: FontWeight.w600,
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: jenisKelaminColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            jk,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: jenisKelaminColor,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Actions
-            EditIconButton(onPressed: onEdit),
-            DeleteIconButton(onPressed: onDelete),
-          ],
+              // Actions
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _isHovered ? 1.0 : 0.7,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EditIconButton(onPressed: widget.onEdit),
+                    DeleteIconButton(onPressed: widget.onDelete),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
