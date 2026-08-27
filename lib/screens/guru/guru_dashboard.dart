@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/qr_service.dart';
 import '../../services/sheets_services.dart';
+import 'onboarding_screen.dart';
 import 'review_absensi_screen.dart';
 import 'riwayat_screen.dart';
 
@@ -257,16 +258,30 @@ class _GuruDashboardState extends State<GuruDashboard> {
     );
 
     if (saved == true && mounted) {
-      setState(() => _scanResults.clear());
+      setState(() {
+        _scanResults.clear();
+        // Force rebuild _BerandaTab to reload data
+        _currentIndex = 0;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Absensi berhasil disimpan')),
       );
     }
   }
 
+  void _backToMapelSelection() {
+    // Navigate back to onboarding with kelas already selected
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => OnboardingKelasMapelScreen(initialKelas: widget.kelas),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final nama = context.watch<AuthService>().currentUser?.nama ?? '';
+    final email = context.watch<AuthService>().currentUser?.email ?? '';
     
     final pages = [
       _BerandaTab(
@@ -280,187 +295,216 @@ class _GuruDashboardState extends State<GuruDashboard> {
       RiwayatScreen(kelas: widget.kelas, mapel: widget.mapel),
     ];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
-        child: AppBar(
-          backgroundColor: const Color(0xFF005DA7),
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          flexibleSpace: SafeArea(
+    return WillPopScope(
+      onWillPop: () async {
+        // Ketika back button hardware ditekan, kembali ke pilih mapel
+        _backToMapelSelection();
+        return false; // Prevent default back behavior
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: Column(
+          children: [
+            // Custom Header with rounded all corners
+            Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF005DA7),
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 15, 18, 20),
+                  child: Row(
+                    children: [
+                      // Back Button
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        onPressed: _backToMapelSelection,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Ganti Mata Pelajaran',
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'HALLO !',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              email.isNotEmpty ? email : 'Guru',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                height: 1.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Body content
+            Expanded(child: pages[_currentIndex]),
+          ],
+        ),
+        floatingActionButton: _scanResults.isEmpty
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: _bukaTinjauAbsensi,
+                backgroundColor: const Color(0xFF005DA7),
+                icon: const Icon(Icons.fact_check_rounded),
+                label: Text(
+                  'Tinjau (${_scanResults.length})',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 24,
+                  // Beranda Button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_currentIndex != 0) {
+                          setState(() => _currentIndex = 0);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _currentIndex == 0
+                              ? const Color(0xFF005DA7)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.home,
+                              color: _currentIndex == 0
+                                  ? Colors.white
+                                  : const Color(0xFF9CA3AF),
+                              size: 22,
+                            ),
+                            if (_currentIndex == 0) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                'Beranda',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      nama.isNotEmpty ? nama : 'Guru',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                  
+                  // QR Scanner Button
+                  GestureDetector(
+                    onTap: _openCameraScanner,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF005DA7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_scanner,
                         color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // Riwayat Button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_currentIndex != 2) {
+                          setState(() => _currentIndex = 2);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _currentIndex == 2
+                              ? const Color(0xFF005DA7)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.history,
+                              color: _currentIndex == 2
+                                  ? Colors.white
+                                  : const Color(0xFF9CA3AF),
+                              size: 22,
+                            ),
+                            if (_currentIndex == 2) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                'Riwayat',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-      body: pages[_currentIndex],
-      floatingActionButton: _scanResults.isEmpty
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _bukaTinjauAbsensi,
-              backgroundColor: const Color(0xFF005DA7),
-              icon: const Icon(Icons.fact_check_rounded),
-              label: Text(
-                'Tinjau (${_scanResults.length})',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Beranda Button
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_currentIndex != 0) {
-                        setState(() => _currentIndex = 0);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _currentIndex == 0
-                            ? const Color(0xFF005DA7)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.home,
-                            color: _currentIndex == 0
-                                ? Colors.white
-                                : const Color(0xFF9CA3AF),
-                            size: 22,
-                          ),
-                          if (_currentIndex == 0) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              'Beranda',
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
-                // QR Scanner Button
-                GestureDetector(
-                  onTap: _openCameraScanner,
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF005DA7),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.qr_code_scanner,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
-                // Riwayat Button
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_currentIndex != 2) {
-                        setState(() => _currentIndex = 2);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _currentIndex == 2
-                            ? const Color(0xFF005DA7)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.history,
-                            color: _currentIndex == 2
-                                ? Colors.white
-                                : const Color(0xFF9CA3AF),
-                            size: 22,
-                          ),
-                          if (_currentIndex == 2) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              'Riwayat',
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ),
@@ -605,6 +649,15 @@ class _BerandaTabState extends State<_BerandaTab> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(_BerandaTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload data jika key berubah (setelah save absensi)
+    if (widget.key != oldWidget.key) {
+      _load();
+    }
   }
 
   Future<void> _load() async {

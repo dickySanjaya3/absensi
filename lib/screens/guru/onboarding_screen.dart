@@ -8,7 +8,9 @@ import '../role_router.dart';
 import 'guru_dashboard.dart';
 
 class OnboardingKelasMapelScreen extends StatefulWidget {
-  const OnboardingKelasMapelScreen({super.key});
+  final String? initialKelas;
+
+  const OnboardingKelasMapelScreen({super.key, this.initialKelas});
 
   @override
   State<OnboardingKelasMapelScreen> createState() =>
@@ -65,6 +67,10 @@ class _OnboardingKelasMapelScreenState
   @override
   void initState() {
     super.initState();
+    // Set selected kelas dari parameter jika ada
+    if (widget.initialKelas != null) {
+      _selectedKelas = widget.initialKelas;
+    }
     final email = context.read<AuthService>().currentUser?.email;
     if (email != null) {
       _loadAssignments(email);
@@ -165,6 +171,10 @@ class _OnboardingKelasMapelScreenState
       padding: const EdgeInsets.fromLTRB(18, 15, 18, 20),
       decoration: const BoxDecoration(
         color: Color(0xFF005DA7),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
+        ),
       ),
       child: Row(
         children: [

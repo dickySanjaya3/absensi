@@ -109,30 +109,63 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: Text('Tinjau Absensi - ${widget.kelas}'),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _siswa.isEmpty
-              ? const Center(child: Text('Belum ada siswa di kelas ini.'))
-              : Column(
+      body: Column(
+        children: [
+          // Custom Header with rounded bottom
+          Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF005DA7),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 8, 16, 16),
+                child: Row(
                   children: [
-                    Container(
-                      width: double.infinity,
-                      color: Colors.indigo.withValues(alpha: 0.08),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Text(
-                        '$sudahDiscanCount dari ${_siswa.length} siswa sudah discan. '
-                        'Sisanya bisa kamu isi manual di bawah sebelum disimpan.',
-                        style: const TextStyle(fontSize: 13),
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
                     ),
                     Expanded(
-                      child: ListView.separated(
+                      child: Text(
+                        'Tinjau Absensi - ${widget.kelas}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Info banner
+          Container(
+            width: double.infinity,
+            color: Colors.indigo.withValues(alpha: 0.08),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            child: Text(
+              '$sudahDiscanCount dari ${_siswa.length} siswa sudah discan. '
+              'Sisanya bisa kamu isi manual di bawah sebelum disimpan.',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          // Body content
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _siswa.isEmpty
+                    ? const Center(child: Text('Belum ada siswa di kelas ini.'))
+                    : ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: _siswa.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -206,29 +239,29 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
                           );
                         },
                       ),
-                    ),
-                    SafeArea(
-                      minimum: const EdgeInsets.all(16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _saving ? null : _simpan,
-                          child: _saving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Simpan Absensi'),
+          ),
+          SafeArea(
+            minimum: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _simpan,
+                child: _saving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
-                      ),
-                    ),
-                  ],
-                ),
+                      )
+                    : const Text('Simpan Absensi'),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
