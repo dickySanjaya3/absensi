@@ -70,14 +70,12 @@ class CurvedHeader extends StatelessWidget {
   final String greeting;
   final String subtitle;
   final VoidCallback? onLogout;
-  final VoidCallback? onProfileTap;
 
   const CurvedHeader({
     super.key,
     required this.greeting,
     required this.subtitle,
     this.onLogout,
-    this.onProfileTap,
   });
 
   @override
@@ -100,22 +98,14 @@ class CurvedHeader extends StatelessWidget {
         bottom: false,
         child: Row(
           children: [
-            GestureDetector(
-              onTap: onProfileTap,
-              child: Container(
-                width: 47,
-                height: 47,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.white,
-                  size: 24,
-                ),
+            // Logout button di kiri (menggantikan icon profile)
+            if (onLogout != null)
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                tooltip: 'Keluar',
+                onPressed: onLogout,
+                padding: const EdgeInsets.all(8),
               ),
-            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -145,19 +135,6 @@ class CurvedHeader extends StatelessWidget {
                 ],
               ),
             ),
-            if (onLogout != null)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-                  tooltip: 'Keluar',
-                  onPressed: onLogout,
-                  padding: const EdgeInsets.all(8),
-                ),
-              ),
           ],
         ),
       ),

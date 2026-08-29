@@ -106,9 +106,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                         if (_loadingStats)
                           const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF087BB9)),
+                            ),
                           ),
                       ],
                     ),
@@ -221,16 +224,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 color: const Color(0xFFE7A008),
                 icon: Icons.school_outlined,
                 loading: _loadingStats,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _AnimatedStatBox(
-                label: 'TUGAS',
-                value: 0,
-                color: const Color(0xFF7C3AED),
-                icon: Icons.assignment_outlined,
-                loading: false,
               ),
             ),
           ],

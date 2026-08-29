@@ -665,7 +665,13 @@ class _BerandaTab extends StatefulWidget {
 class _BerandaTabState extends State<_BerandaTab> {
   final SheetsService _sheetsService = SheetsService();
   List<Map<String, dynamic>> _kehadiranHariIni = [];
+  List<Map<String, dynamic>> _displayedItems = [];
   bool _loading = true;
+  bool _loadingMore = false;
+  
+  final ScrollController _scrollController = ScrollController();
+  static const int _itemsPerPage = 20;
+  int _currentPage = 0;
 
   static const _namaBulan = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -676,6 +682,21 @@ class _BerandaTabState extends State<_BerandaTab> {
   void initState() {
     super.initState();
     _load();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreItems();
+    }
   }
 
   @override
@@ -716,7 +737,35 @@ class _BerandaTabState extends State<_BerandaTab> {
     if (!mounted) return;
     setState(() {
       _kehadiranHariIni = hariIni;
+      _currentPage = 0;
+      _displayedItems = _kehadiranHariIni.take(_itemsPerPage).toList();
       _loading = false;
+    });
+  }
+
+  void _loadMoreItems() {
+    if (_loadingMore) return;
+    if (_displayedItems.length >= _kehadiranHariIni.length) return;
+
+    setState(() => _loadingMore = true);
+
+    // Simulate network delay (optional, remove in production if data is already loaded)
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      
+      final nextPage = _currentPage + 1;
+      final startIndex = nextPage * _itemsPerPage;
+      final endIndex = (startIndex + _itemsPerPage).clamp(0, _kehadiranHariIni.length);
+      
+      if (startIndex < _kehadiranHariIni.length) {
+        setState(() {
+          _displayedItems.addAll(_kehadiranHariIni.sublist(startIndex, endIndex));
+          _currentPage = nextPage;
+          _loadingMore = false;
+        });
+      } else {
+        setState(() => _loadingMore = false);
+      }
     });
   }
 
@@ -765,6 +814,7 @@ class _BerandaTabState extends State<_BerandaTab> {
       onRefresh: _load,
       color: const Color(0xFF005DA7),
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
           // Card Info Kelas
@@ -962,7 +1012,7 @@ class _BerandaTabState extends State<_BerandaTab> {
               ),
             )
           else
-            ..._kehadiranHariIni.map((item) {
+            ..._displayedItems.map((item) {
               final nama = (item['nama'] ?? item['siswaId'] ?? '-').toString();
               final nis = item['nis']?.toString();
               final status = (item['status'] ?? '-').toString();
@@ -976,6 +1026,31 @@ class _BerandaTabState extends State<_BerandaTab> {
                 statusColor: _statusColor(status),
               );
             }),
+          
+          // Loading indicator saat load more
+          if (_loadingMore)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF005DA7)),
+                ),
+              ),
+            ),
+          
+          // Info total items
+          if (!_loading && _kehadiranHariIni.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Menampilkan ${_displayedItems.length} dari ${_kehadiranHariIni.length} data',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF9CA3AF),
+                ),
+              ),
+            ),
         ],
       ),
     );
