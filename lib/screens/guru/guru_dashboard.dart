@@ -782,7 +782,18 @@ class _BerandaTabState extends State<_BerandaTab> {
   List<Map<String, dynamic>> _displayedItems = [];
   bool _loading = true;
   bool _loadingMore = false;
-  
+
+  // Counter Beranda (Total Siswa / Hadir / Izin / Sakit / Alpa) - diambil
+  // dari action 'getDashboardCounter' supaya SEBELUM guru absen, Total
+  // Siswa & Alpa default = jumlah siswa di kelas (bukan 0). Begitu guru
+  // absen/scan, angka Alpa berkurang berpindah ke Hadir/Izin/Sakit sesuai
+  // data rekap hari itu.
+  int _counterTotal = 0;
+  int _counterHadir = 0;
+  int _counterIzin = 0;
+  int _counterSakit = 0;
+  int _counterAlpa = 0;
+
   final ScrollController _scrollController = ScrollController();
   static const int _itemsPerPage = 20;
   int _currentPage = 0;
@@ -848,11 +859,26 @@ class _BerandaTabState extends State<_BerandaTab> {
       return ts.startsWith(todayStr);
     }).toList();
 
+    // Counter Total/Hadir/Izin/Sakit/Alpa TIDAK lagi dihitung dari daftar
+    // absensi hari ini saja (yang kosong kalau guru belum absen), tapi dari
+    // getDashboardCounter() yang basisnya total siswa per kelas - jadi
+    // sebelum guru absen, Alpa = total siswa kelas (bukan 0).
+    final counter = await _sheetsService.getDashboardCounter(
+      emailGuru: email,
+      kelas: widget.kelas,
+      mapel: widget.mapel,
+    );
+
     if (!mounted) return;
     setState(() {
       _kehadiranHariIni = hariIni;
       _currentPage = 0;
       _displayedItems = _kehadiranHariIni.take(_itemsPerPage).toList();
+      _counterTotal = counter['total'] ?? 0;
+      _counterHadir = counter['hadir'] ?? 0;
+      _counterIzin = counter['izin'] ?? 0;
+      _counterSakit = counter['sakit'] ?? 0;
+      _counterAlpa = counter['alpa'] ?? 0;
       _loading = false;
     });
   }
@@ -903,26 +929,15 @@ class _BerandaTabState extends State<_BerandaTab> {
     final now = DateTime.now();
     final tanggalStr = '${now.day} ${_namaBulan[now.month - 1].substring(0, 3)} ${now.year}';
 
-    // Count stats
-    int totalHadir = 0, totalIzin = 0, totalSakit = 0, totalAlpa = 0;
-    for (final item in _kehadiranHariIni) {
-      final status = (item['status'] ?? '').toString();
-      switch (status) {
-        case 'Hadir':
-          totalHadir++;
-          break;
-        case 'Izin':
-          totalIzin++;
-          break;
-        case 'Sakit':
-          totalSakit++;
-          break;
-        case 'Alpa':
-          totalAlpa++;
-          break;
-      }
-    }
-    final totalSiswa = totalHadir + totalIzin + totalSakit + totalAlpa;
+    // Count stats - diambil dari getDashboardCounter() (lihat _load()),
+    // BUKAN dihitung ulang dari _kehadiranHariIni, supaya sebelum guru
+    // melakukan absensi hari ini, Total Siswa & Alpa tetap menampilkan
+    // jumlah siswa per kelas (default), bukan 0.
+    final totalHadir = _counterHadir;
+    final totalIzin = _counterIzin;
+    final totalSakit = _counterSakit;
+    final totalAlpa = _counterAlpa;
+    final totalSiswa = _counterTotal;
 
     return RefreshIndicator(
       onRefresh: _load,

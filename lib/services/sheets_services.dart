@@ -233,6 +233,33 @@ class SheetsService {
     return (res['data'] as List).cast<Map<String, dynamic>>();
   }
 
+  /// Counter Beranda guru: total siswa per kelas jadi basis, siswa yang
+  /// belum diabsen hari ini otomatis dihitung 'Alpa' (default), begitu
+  /// diabsen berpindah ke Hadir/Izin/Sakit. Lihat action
+  /// 'getDashboardCounter' di Code.gs.
+  Future<Map<String, int>> getDashboardCounter({
+    required String emailGuru,
+    required String kelas,
+    required String mapel,
+  }) async {
+    final res = await _call('getDashboardCounter', {
+      'emailGuru': emailGuru,
+      'kelas': kelas,
+      'mapel': mapel,
+    });
+    if (res['ok'] != true) {
+      return {'total': 0, 'hadir': 0, 'izin': 0, 'sakit': 0, 'alpa': 0};
+    }
+    final data = res['data'] as Map<String, dynamic>;
+    return {
+      'total': (data['total'] as num?)?.toInt() ?? 0,
+      'hadir': (data['hadir'] as num?)?.toInt() ?? 0,
+      'izin': (data['izin'] as num?)?.toInt() ?? 0,
+      'sakit': (data['sakit'] as num?)?.toInt() ?? 0,
+      'alpa': (data['alpa'] as num?)?.toInt() ?? 0,
+    };
+  }
+
   Future<bool> writeAttendance({
     required String guruEmail,
     required String kelas,
