@@ -108,13 +108,13 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
       return;
     }
 
+    final formKey = GlobalKey<FormState>();
+
     final saved = await showModernDialog<bool>(
       context: context,
       title: student == null ? 'Tambah Siswa' : 'Edit Siswa',
       backgroundColor: const Color(0xFF1FA97A),
       builder: (ctx, isSaving, setDialogState) {
-        final formKey = GlobalKey<FormState>();
-
         return Form(
           key: formKey,
           child: Column(
@@ -194,8 +194,9 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
         );
       },
       onConfirm: (ctx, setDialogState) async {
-        final formKey = ctx.findAncestorStateOfType<FormState>();
-        if (formKey != null && !formKey.validate()) return false;
+        if (formKey.currentState != null && !formKey.currentState!.validate()) {
+          return false;
+        }
 
         final result = index == null
             ? await _sheetsService.addStudent(

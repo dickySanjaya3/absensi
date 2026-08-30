@@ -65,14 +65,13 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
 
   Future<void> _tambahKelas() async {
     final ctrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
     final namaKelas = await showModernDialog<String>(
       context: context,
       title: 'Tambah Kelas',
       backgroundColor: const Color(0xFFE7A008),
       builder: (ctx, isSaving, setDialogState) {
-        final formKey = GlobalKey<FormState>();
-
         return Form(
           key: formKey,
           child: ModernTextField(
@@ -86,8 +85,9 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
         );
       },
       onConfirm: (ctx, setDialogState) async {
-        final formKey = ctx.findAncestorStateOfType<FormState>();
-        if (formKey != null && !formKey.validate()) return null;
+        if (formKey.currentState != null && !formKey.currentState!.validate()) {
+          return null;
+        }
 
         final error = await _sheetsService.addClass(ctrl.text.trim());
         if (error == null) {

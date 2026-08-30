@@ -42,13 +42,13 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
       text: assignment?['Mata Pelajaran']?.toString() ?? '',
     );
 
+    final formKey = GlobalKey<FormState>();
+
     final saved = await showModernDialog<bool>(
       context: context,
       title: assignment == null ? 'Tambah Assignment' : 'Edit Assignment',
       backgroundColor: const Color(0xFF7C3AED),
       builder: (ctx, isSaving, setDialogState) {
-        final formKey = GlobalKey<FormState>();
-
         return Form(
           key: formKey,
           child: Column(
@@ -79,8 +79,9 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
         );
       },
       onConfirm: (ctx, setDialogState) async {
-        final formKey = ctx.findAncestorStateOfType<FormState>();
-        if (formKey != null && !formKey.validate()) return false;
+        if (formKey.currentState != null && !formKey.currentState!.validate()) {
+          return false;
+        }
 
         final result = index == null
             ? await _service.addAssignment(
