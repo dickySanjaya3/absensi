@@ -43,18 +43,22 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
     await _loadClasses();
     if (!mounted) return;
     if (ditemukan == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal sinkronisasi. Coba lagi.')),
+      showModernToast(
+        context: context,
+        message: 'Gagal sinkronisasi. Coba lagi.',
+        type: ToastType.error,
       );
     } else if (ditemukan.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Semua kelas di spreadsheet sudah terdaftar.')),
+      showModernToast(
+        context: context,
+        message: 'Semua kelas di spreadsheet sudah terdaftar.',
+        type: ToastType.info,
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${ditemukan.length} kelas lama ditemukan & didaftarkan: ${ditemukan.join(', ')}'),
-        ),
+      showModernToast(
+        context: context,
+        message: '${ditemukan.length} kelas lama ditemukan & didaftarkan: ${ditemukan.join(', ')}',
+        type: ToastType.success,
       );
     }
   }
@@ -104,8 +108,10 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
     if (namaKelas != null) {
       await _loadClasses();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kelas "$namaKelas" ditambahkan')),
+        showModernToast(
+          context: context,
+          message: 'Kelas "$namaKelas" ditambahkan',
+          type: ToastType.success,
         );
       }
     }
@@ -129,9 +135,13 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
     if (ok) {
       await _loadClasses();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menghapus kelas')),
-      );
+      if (mounted) {
+        showModernToast(
+          context: context,
+          message: 'Gagal menghapus kelas',
+          type: ToastType.error,
+        );
+      }
     }
   }
 

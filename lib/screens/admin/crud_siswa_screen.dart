@@ -227,9 +227,9 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
 
     if (saved == true) {
       await _loadStudents();
-      if (mounted) _message('Data siswa tersimpan');
+      if (mounted) _message('Data siswa tersimpan', type: ToastType.success);
     } else if (saved == false && mounted) {
-      _message('Gagal menyimpan. ID atau NIS mungkin sudah digunakan.');
+      _message('Gagal menyimpan. ID atau NIS mungkin sudah digunakan.', type: ToastType.error);
     }
   }
 
@@ -254,13 +254,19 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
           rowNumber: rowNumber,
         )) {
       await _loadStudents();
+      if (mounted) _message('Data siswa dihapus', type: ToastType.success);
     } else if (mounted) {
-      _message('Gagal menghapus data siswa');
+      _message('Gagal menghapus data siswa', type: ToastType.error);
     }
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _message(String text, {ToastType type = ToastType.info}) {
+    showModernToast(
+      context: context,
+      message: text,
+      type: type,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -278,12 +284,13 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
                   final n = await _sheetsService.repairKelasNamaJk(_selectedKelas!);
                   if (!mounted) return;
                   if (n == null) {
-                    _message('Gagal memperbaiki data. Coba lagi.');
+                    _message('Gagal memperbaiki data. Coba lagi.', type: ToastType.error);
                   } else if (n == 0) {
-                    _message('Tidak ada data yang perlu diperbaiki.');
+                    _message('Tidak ada data yang perlu diperbaiki.', type: ToastType.info);
                   } else {
                     _message(
                       '$n data diperbaiki. Kolom Jenis Kelamin dikosongkan, silakan isi ulang manual.',
+                      type: ToastType.success,
                     );
                     await _loadStudents();
                   }

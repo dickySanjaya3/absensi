@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../widgets/admin_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,11 +20,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     final auth = Provider.of<AuthService>(context, listen: false);
-    final messenger = ScaffoldMessenger.maybeOf(context);
 
     if (_emailCtrl.text.trim().isEmpty || _passwordCtrl.text.isEmpty) {
-      messenger?.showSnackBar(
-        const SnackBar(content: Text('Email dan password wajib diisi')),
+      showModernToast(
+        context: context,
+        message: 'Email dan password wajib diisi',
+        type: ToastType.warning,
       );
       return;
     }
@@ -34,8 +36,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (!success) {
-      messenger?.showSnackBar(
-        const SnackBar(content: Text('Email atau password salah')),
+      showModernToast(
+        context: context,
+        message: 'Email atau password salah',
+        type: ToastType.error,
       );
     }
   }

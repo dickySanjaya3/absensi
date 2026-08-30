@@ -122,14 +122,18 @@ class _ImportSiswaScreenState extends State<ImportSiswaScreen> {
   Future<void> _import() async {
     final kelas = _kelasCtrl.text.trim();
     if (kelas.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama kelas wajib diisi')),
+      showModernToast(
+        context: context,
+        message: 'Nama kelas wajib diisi',
+        type: ToastType.warning,
       );
       return;
     }
     if (_preview.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Belum ada data valid untuk diimport')),
+      showModernToast(
+        context: context,
+        message: 'Belum ada data valid untuk diimport',
+        type: ToastType.warning,
       );
       return;
     }
@@ -165,9 +169,13 @@ class _ImportSiswaScreenState extends State<ImportSiswaScreen> {
     if (count != null) {
       Navigator.pop(context, true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal import. Coba lagi.')),
-      );
+      if (mounted) {
+        showModernToast(
+          context: context,
+          message: 'Gagal import. Coba lagi.',
+          type: ToastType.error,
+        );
+      }
     }
   }
 

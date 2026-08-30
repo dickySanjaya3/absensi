@@ -1287,3 +1287,206 @@ Future<bool?> showModernConfirmDialog({
     },
   );
 }
+
+
+/// ==================== MODERN TOAST/SNACKBAR ====================
+
+/// Show modern toast/snackbar
+void showModernToast({
+  required BuildContext context,
+  required String message,
+  ToastType type = ToastType.info,
+  Duration duration = const Duration(seconds: 3),
+}) {
+  final messenger = ScaffoldMessenger.of(context);
+  
+  // Clear existing snackbars
+  messenger.clearSnackBars();
+  
+  Color backgroundColor;
+  IconData icon;
+  Color iconColor;
+  
+  switch (type) {
+    case ToastType.success:
+      backgroundColor = const Color(0xFF1FA97A);
+      icon = Icons.check_circle_rounded;
+      iconColor = Colors.white;
+      break;
+    case ToastType.error:
+      backgroundColor = const Color(0xFFE0587A);
+      icon = Icons.error_rounded;
+      iconColor = Colors.white;
+      break;
+    case ToastType.warning:
+      backgroundColor = const Color(0xFFE7A008);
+      icon = Icons.warning_rounded;
+      iconColor = Colors.white;
+      break;
+    case ToastType.info:
+      backgroundColor = const Color(0xFF087BB9);
+      icon = Icons.info_rounded;
+      iconColor = Colors.white;
+      break;
+  }
+  
+  messenger.showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: backgroundColor,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      duration: duration,
+      elevation: 4,
+    ),
+  );
+}
+
+enum ToastType { success, error, warning, info }
+
+/// ==================== MODERN LOADING OVERLAY ====================
+
+/// Loading overlay with modern design
+class ModernLoadingOverlay extends StatelessWidget {
+  final String? message;
+  final Color? backgroundColor;
+
+  const ModernLoadingOverlay({
+    super.key,
+    this.message,
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: (backgroundColor ?? Colors.black).withValues(alpha: 0.5),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF087BB9),
+                  ),
+                ),
+              ),
+              if (message != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  message!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ==================== MODERN LOADING DIALOG ====================
+
+/// Show loading dialog
+void showModernLoadingDialog({
+  required BuildContext context,
+  String message = 'Memuat...',
+}) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.5),
+    builder: (ctx) => PopScope(
+      canPop: false,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF087BB9),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Hide loading dialog
+void hideModernLoadingDialog(BuildContext context) {
+  Navigator.of(context, rootNavigator: true).pop();
+}

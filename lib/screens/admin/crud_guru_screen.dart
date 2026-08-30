@@ -239,13 +239,19 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
     final rowNumber = (_gurus[index]['_rowNumber'] as num).toInt();
     if (await _sheetsService.deleteGuru(rowNumber)) {
       await _loadGurus();
+      if (mounted) _message('Data guru dihapus', type: ToastType.success);
     } else if (mounted) {
-      _message('Gagal menghapus data guru');
+      _message('Gagal menghapus data guru', type: ToastType.error);
     }
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _message(String text, {ToastType type = ToastType.info}) {
+    showModernToast(
+      context: context,
+      message: text,
+      type: type,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -104,9 +104,9 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
 
     if (saved == true) {
       await _load();
-      if (mounted) _message('Assignment tersimpan');
+      if (mounted) _message('Assignment tersimpan', type: ToastType.success);
     } else if (saved == false && mounted) {
-      _message('Assignment gagal disimpan atau sudah ada');
+      _message('Assignment gagal disimpan atau sudah ada', type: ToastType.error);
     }
   }
 
@@ -127,13 +127,19 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
     final rowNumber = (_items[index]['_rowNumber'] as num).toInt();
     if (await _service.deleteAssignment(rowNumber)) {
       await _load();
+      if (mounted) _message('Assignment dihapus', type: ToastType.success);
     } else if (mounted) {
-      _message('Assignment gagal dihapus');
+      _message('Assignment gagal dihapus', type: ToastType.error);
     }
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _message(String text, {ToastType type = ToastType.info}) {
+    showModernToast(
+      context: context,
+      message: text,
+      type: type,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
