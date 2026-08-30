@@ -25,21 +25,6 @@ class RoleRouter extends StatelessWidget {
       case UserRole.guru:
         return const OnboardingKelasMapelScreen();
       case UserRole.unauthorized:
-        return Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Login gagal. Cek kembali email/password.'),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => auth.signOut(),
-                  child: const Text('Kembali ke Login'),
-                ),
-              ],
-            ),
-          ),
-        );
       case UserRole.none:
         return const LoginScreen();
     }

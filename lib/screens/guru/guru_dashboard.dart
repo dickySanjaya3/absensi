@@ -230,6 +230,20 @@ class _GuruDashboardState extends State<GuruDashboard> {
       return;
     }
 
+    // ✅ CEK APAKAH SUDAH PERNAH DI-SCAN
+    if (_scanResults.containsKey(studentId)) {
+      HapticFeedback.lightImpact();
+      final nama = _studentsCache.firstWhere(
+        (s) => (s['ID'] ?? '').toString() == studentId,
+        orElse: () => const {},
+      )['Nama']?.toString();
+      showOverlay(
+        '${nama ?? studentId}\n(Sudah di-scan)',
+        false,
+      );
+      return;
+    }
+
     final nama = _studentsCache.firstWhere(
       (s) => (s['ID'] ?? '').toString() == studentId,
       orElse: () => const {},

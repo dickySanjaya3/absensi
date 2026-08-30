@@ -47,9 +47,10 @@ class AuthService extends ChangeNotifier {
   Future<bool> login(String email, String password) async {
     final result = await _sheetsService.login(email.trim(), password);
     if (result == null) {
+      // Jangan ubah currentRole, biarkan tetap none agar tetap di LoginScreen
       currentUser = null;
-      currentRole = UserRole.unauthorized;
-      notifyListeners();
+      // currentRole tetap none, tidak perlu diubah
+      // notifyListeners tidak dipanggil karena tidak ada perubahan state
       return false;
     }
     currentUser = result;
