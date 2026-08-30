@@ -204,6 +204,9 @@ class _CrudGuruScreenState extends State<CrudGuruScreen> {
       },
     );
 
+    // Add delay to ensure dialog animation is fully complete before disposing controllers
+    await Future.delayed(const Duration(milliseconds: 300));
+    
     // 🔧 DISPOSE CONTROLLER
     emailCtrl.dispose();
     passwordCtrl.dispose();

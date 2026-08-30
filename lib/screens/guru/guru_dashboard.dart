@@ -28,14 +28,68 @@ class _GuruDashboardState extends State<GuruDashboard> {
 
   final Map<String, String> _scanResults = {};
   List<Map<String, dynamic>> _studentsCache = [];
+  bool _isOpeningScanner = false; // Prevent spam click
 
   Future<void> _openCameraScanner() async {
+    // Prevent multiple clicks while opening scanner
+    if (_isOpeningScanner) {
+      debugPrint('Scanner already opening, ignoring click');
+      return;
+    }
+
+    _isOpeningScanner = true;
+
+    // Show loading indicator with modern toast theme
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Membuka scanner...',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF087BB9),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          duration: const Duration(seconds: 2),
+          elevation: 4,
+        ),
+      );
+    }
+
     // Refresh data siswa
     try {
       final students = await _sheetsService.getStudents(kelas: widget.kelas);
-      if (!mounted) return;
+      if (!mounted) {
+        _isOpeningScanner = false;
+        return;
+      }
       _studentsCache = students;
     } catch (e) {
+      _isOpeningScanner = false;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat data siswa: $e')),
@@ -53,8 +107,26 @@ class _GuruDashboardState extends State<GuruDashboard> {
     String? overlayNama;
     bool overlaySukses = true;
 
-    // Controller
-    final controller = MobileScannerController();
+    // Controller with optimized settings
+    final controller = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+
+    // Add slight delay to ensure UI is ready
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (!mounted) {
+      _isOpeningScanner = false;
+      return;
+    }
+
+    // Reset flag and clear loading snackbar after showing modal
+    setState(() {
+      _isOpeningScanner = false;
+    });
+    ScaffoldMessenger.of(context).clearSnackBars();
 
     showModalBottomSheet(
       context: context,
@@ -87,9 +159,11 @@ class _GuruDashboardState extends State<GuruDashboard> {
                   automaticallyImplyLeading: false,
                   actions: [
                     TextButton(
-                      onPressed: () {
-                        controller.dispose();
-                        Navigator.pop(context);
+                      onPressed: () async {
+                        await controller.dispose();
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
                       },
                       child: const Text(
                         'Selesai',
@@ -212,6 +286,13 @@ class _GuruDashboardState extends State<GuruDashboard> {
       ),
     ).whenComplete(() {
       controller.dispose();
+      // Reset flag when scanner is closed (backup)
+      if (mounted) {
+        setState(() {
+          _isOpeningScanner = false;
+        });
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
     });
   }
 
@@ -485,20 +566,39 @@ class _GuruDashboardState extends State<GuruDashboard> {
                   ),
                   const SizedBox(width: 12),
                   
-                  // QR Scanner Button
-                  GestureDetector(
-                    onTap: _openCameraScanner,
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF005DA7),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.qr_code_scanner,
-                        color: Colors.white,
-                        size: 26,
+                  // QR Scanner Button with better visual feedback
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isOpeningScanner ? null : _openCameraScanner,
+                      borderRadius: BorderRadius.circular(28),
+                      splashColor: Colors.white.withValues(alpha: 0.3),
+                      highlightColor: Colors.white.withValues(alpha: 0.2),
+                      child: Ink(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: _isOpeningScanner
+                              ? const Color(0xFF005DA7).withValues(alpha: 0.6)
+                              : const Color(0xFF005DA7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: _isOpeningScanner
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.qr_code_scanner,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                        ),
                       ),
                     ),
                   ),

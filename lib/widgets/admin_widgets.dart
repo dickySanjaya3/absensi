@@ -1054,10 +1054,12 @@ Future<T?> showModernDialog<T>({
 
   return await showDialog<T>(
     context: context,
-    barrierDismissible: false,
+    barrierDismissible: !isSaving,  // Allow dismiss when not saving
     builder: (ctx) {
-      return StatefulBuilder(
-        builder: (ctx, setDialogState) {
+      return WillPopScope(
+        onWillPop: () async => !isSaving,  // Prevent back button when saving
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) {
           return AlertDialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
@@ -1128,11 +1130,17 @@ Future<T?> showModernDialog<T>({
                               : () async {
                                   setDialogState(() => isSaving = true);
                                   final result = await onConfirm(ctx, setDialogState);
-                                  if (ctx.mounted) {
-                                    if (result != null) {
-                                      Navigator.of(ctx).pop(result);
-                                    } else {
+                                  // Check if dialog is still mounted before calling setState
+                                  if (!ctx.mounted) return;
+                                  
+                                  if (result != null) {
+                                    Navigator.of(ctx).pop(result);
+                                  } else {
+                                    // Only update state if dialog is still open
+                                    try {
                                       setDialogState(() => isSaving = false);
+                                    } catch (e) {
+                                      // Dialog already closed, ignore error
                                     }
                                   }
                                 },
@@ -1169,6 +1177,7 @@ Future<T?> showModernDialog<T>({
             ),
           );
         },
+      ),
       );
     },
   );

@@ -99,6 +99,10 @@ class _CrudAssignmentScreenState extends State<CrudAssignmentScreen> {
       },
     );
 
+    // Add delay to ensure dialog animation is fully complete before disposing controllers
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Now safe to dispose controllers
     email.dispose();
     kelas.dispose();
     mapel.dispose();

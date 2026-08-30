@@ -103,6 +103,10 @@ class _CrudKelasScreenState extends State<CrudKelasScreen> {
       },
     );
 
+    // Add delay to ensure dialog animation is fully complete before disposing controller
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Now safe to dispose controller
     ctrl.dispose();
 
     if (namaKelas != null) {

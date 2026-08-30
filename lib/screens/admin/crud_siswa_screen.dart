@@ -220,6 +220,10 @@ class _CrudSiswaScreenState extends State<CrudSiswaScreen> {
       },
     );
 
+    // Add delay to ensure dialog animation is fully complete before disposing controllers
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Now safe to dispose controllers
     idCtrl.dispose();
     namaCtrl.dispose();
     nisCtrl.dispose();
