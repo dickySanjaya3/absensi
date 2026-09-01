@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -143,11 +144,18 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     if (!mounted) return;
     setState(() => _isExporting = false);
 
-    if (result['url'] != null) {
+    // Debug logging
+    debugPrint('Export result: $result');
+    debugPrint('URL: ${result['url']}');
+    debugPrint('Error: ${result['error']}');
+
+    if (result['url'] != null && result['url']!.isNotEmpty) {
       _showResultDialog(result['url']!);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['error'] ?? 'Gagal membuat rekap')),
+      showModernToast(
+        context: context,
+        message: result['error'] ?? 'Gagal membuat rekap',
+        type: ToastType.error,
       );
     }
   }
@@ -181,13 +189,71 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // Button untuk copy link
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: url));
+                if (!mounted) return;
+                showModernToast(
+                  context: context,
+                  message: 'Link berhasil disalin ke clipboard',
+                  type: ToastType.success,
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Salin Link'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF087BB9),
+              ),
+            ),
           ],
         );
       },
       onConfirm: (ctx, setDialogState) async {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        try {
+          debugPrint('Attempting to open URL: $url');
+          final uri = Uri.parse(url);
+          
+          // Coba launch dengan mode external application
+          final canLaunch = await canLaunchUrl(uri);
+          debugPrint('Can launch URL: $canLaunch');
+          
+          if (canLaunch) {
+            final launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+            debugPrint('Launch successful: $launched');
+            
+            if (!launched) {
+              if (!mounted) return true;
+              showModernToast(
+                context: context,
+                message: 'Gagal membuka browser. Silakan salin link dan buka manual.',
+                type: ToastType.warning,
+              );
+            }
+          } else {
+            // Fallback: copy to clipboard
+            await Clipboard.setData(ClipboardData(text: url));
+            if (!mounted) return true;
+            showModernToast(
+              context: context,
+              message: 'Link disalin ke clipboard. Silakan paste di browser.',
+              type: ToastType.info,
+            );
+          }
+        } catch (e) {
+          debugPrint('Error launching URL: $e');
+          // Fallback: copy to clipboard
+          await Clipboard.setData(ClipboardData(text: url));
+          if (!mounted) return true;
+          showModernToast(
+            context: context,
+            message: 'Link disalin ke clipboard. Silakan paste di browser.',
+            type: ToastType.info,
+          );
         }
         return true;
       },

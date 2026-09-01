@@ -359,9 +359,8 @@ class _GuruDashboardState extends State<GuruDashboard> {
         // Force rebuild _BerandaTab to reload data
         _currentIndex = 0;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Absensi berhasil disimpan')),
-      );
+      // Dialog success sudah ditampilkan di ReviewAbsensiScreen
+      // Tidak perlu tampilkan lagi di sini
     }
   }
 

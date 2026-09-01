@@ -383,7 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   right: 0,
                   child: Center(
                     child: Text(
-                      'Powered by KKNT UNESA',
+                      'Created by KKNT UNESA 2026',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.quicksand(
                         fontSize: 12,
