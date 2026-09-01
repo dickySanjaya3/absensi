@@ -97,7 +97,7 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
     setState(() => _saving = false);
 
     if (errorMsg == null) {
-      // Success - tampilkan dialog cantik
+      // Success - tampilkan dialog cantik dengan background putih
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -108,25 +108,18 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1FA97A),
-                  Color(0xFF16825E),
-                ],
-              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon success
+                // Icon success dengan background hijau
                 Container(
                   width: 80,
                   height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1FA97A),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -143,7 +136,7 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: const Color(0xFF1E293B),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -154,7 +147,7 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 15,
-                    color: Colors.white.withValues(alpha: 0.95),
+                    color: const Color(0xFF64748B),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -165,7 +158,7 @@ class _ReviewAbsensiScreenState extends State<ReviewAbsensiScreen> {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: const Color(0xFF94A3B8),
                     fontStyle: FontStyle.italic,
                   ),
                 ),

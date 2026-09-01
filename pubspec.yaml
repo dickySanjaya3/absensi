@@ -1,5 +1,5 @@
 name: absensi
-description: "Aplikasi Absensi Siswa Berbasis QR Code - KKN"
+description: "ASIQ - Aplikasi Absensi Siswa Berbasis QR Code"
 publish_to: 'none'
 
 version: 1.0.0+1

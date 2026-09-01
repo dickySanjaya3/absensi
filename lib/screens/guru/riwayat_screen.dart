@@ -161,104 +161,223 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   void _showResultDialog(String url) {
-    showModernDialog(
+    showDialog(
       context: context,
-      title: 'Rekap Berhasil Dibuat',
-      backgroundColor: const Color(0xFF1FA97A),
-      builder: (ctx, isSaving, setDialogState) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Rekap bulanan sudah tersimpan sebagai Google Sheet:'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.black.withValues(alpha: 0.1),
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon success dengan background hijau
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1FA97A),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  size: 50,
+                  color: Colors.white,
                 ),
               ),
-              child: SelectableText(
-                url,
-                style: const TextStyle(
-                  color: Color(0xFF087BB9),
-                  fontSize: 12,
+              const SizedBox(height: 20),
+              
+              // Title
+              Text(
+                'Rekap Berhasil Dibuat!',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            // Button untuk copy link
-            TextButton.icon(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: url));
-                if (!mounted) return;
-                showModernToast(
-                  context: context,
-                  message: 'Link berhasil disalin ke clipboard',
-                  type: ToastType.success,
-                );
-              },
-              icon: const Icon(Icons.copy, size: 16),
-              label: const Text('Salin Link'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF087BB9),
+              const SizedBox(height: 12),
+              
+              // Message
+              Text(
+                'Spreadsheet rekap bulanan sudah tersimpan di Google Sheets',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF64748B),
+                  height: 1.4,
+                ),
               ),
-            ),
-          ],
-        );
-      },
-      onConfirm: (ctx, setDialogState) async {
-        try {
-          debugPrint('Attempting to open URL: $url');
-          final uri = Uri.parse(url);
-          
-          // Coba launch dengan mode external application
-          final canLaunch = await canLaunchUrl(uri);
-          debugPrint('Can launch URL: $canLaunch');
-          
-          if (canLaunch) {
-            final launched = await launchUrl(
-              uri,
-              mode: LaunchMode.externalApplication,
-            );
-            debugPrint('Launch successful: $launched');
-            
-            if (!launched) {
-              if (!mounted) return true;
-              showModernToast(
-                context: context,
-                message: 'Gagal membuka browser. Silakan salin link dan buka manual.',
-                type: ToastType.warning,
-              );
-            }
-          } else {
-            // Fallback: copy to clipboard
-            await Clipboard.setData(ClipboardData(text: url));
-            if (!mounted) return true;
-            showModernToast(
-              context: context,
-              message: 'Link disalin ke clipboard. Silakan paste di browser.',
-              type: ToastType.info,
-            );
-          }
-        } catch (e) {
-          debugPrint('Error launching URL: $e');
-          // Fallback: copy to clipboard
-          await Clipboard.setData(ClipboardData(text: url));
-          if (!mounted) return true;
-          showModernToast(
-            context: context,
-            message: 'Link disalin ke clipboard. Silakan paste di browser.',
-            type: ToastType.info,
-          );
-        }
-        return true;
-      },
-      confirmText: 'Buka',
-      cancelText: 'Tutup',
+              const SizedBox(height: 20),
+              
+              // URL Container
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.link_rounded,
+                      color: Color(0xFF1FA97A),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        url.length > 40 ? '${url.substring(0, 40)}...' : url,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF475569),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () async {
+                        await Clipboard.setData(ClipboardData(text: url));
+                        if (!mounted) return;
+                        showModernToast(
+                          context: context,
+                          message: 'Link berhasil disalin',
+                          type: ToastType.success,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1FA97A).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.copy_rounded,
+                          color: Color(0xFF1FA97A),
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Buttons - Stack vertical untuk space lebih
+              Column(
+                children: [
+                  // Button Buka
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          final uri = Uri.parse(url);
+                          debugPrint('Attempting to launch URL: $url');
+                          
+                          // Launch URL dengan mode externalApplication
+                          bool launched = await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                          
+                          debugPrint('Launch result: $launched');
+                          
+                          if (!launched) {
+                            // Jika gagal, copy ke clipboard sebagai fallback
+                            await Clipboard.setData(ClipboardData(text: url));
+                            if (!mounted) return;
+                            Navigator.of(context).pop();
+                            showModernToast(
+                              context: context,
+                              message: 'Link disalin ke clipboard. Silakan paste di browser.',
+                              type: ToastType.info,
+                            );
+                          } else {
+                            Navigator.of(context).pop();
+                          }
+                        } catch (e) {
+                          debugPrint('Error launching URL: $e');
+                          // Fallback: copy to clipboard
+                          await Clipboard.setData(ClipboardData(text: url));
+                          if (!mounted) return;
+                          Navigator.of(context).pop();
+                          showModernToast(
+                            context: context,
+                            message: 'Link disalin ke clipboard. Silakan paste di browser.',
+                            type: ToastType.info,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1FA97A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.open_in_browser_rounded,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Buka Spreadsheet',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Button Tutup
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF64748B),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Tutup',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
